@@ -1,11 +1,11 @@
-# SD Prompt Analyzer
+# WAN Prompt Generator
 
-Stable Diffusionで生成された画像のメタデータ（プロンプト）を、Vision-Language Model（VLM）を使って対話的に評価・分析するWebアプリケーション。
+Stable Diffusionで生成された画像とそのプロンプトから、Vision-Language Model（VLM）を使ってWAN 2.2用の動画生成プロンプトを作成するWebアプリケーション。
 
 ## 技術スタック
 
 - **Python 3.10+**
-- **Gradio 4.0+** - WebUIフレームワーク
+- **Gradio 6.0+** - WebUIフレームワーク
 - **PyTorch 2.0+** - 深層学習フレームワーク
 - **Transformers 4.40+** - VLMモデル推論
 - **Qwen VL** - 主要なVLMモデル（Qwen2-VL, Qwen2.5-VL, Qwen3-VL対応）
@@ -13,7 +13,7 @@ Stable Diffusionで生成された画像のメタデータ（プロンプト）�
 ## ディレクトリ構造
 
 ```
-sd-prompt-analyzer/
+sd-to-wan-prompt/
 ├── app.py                      # エントリーポイント
 ├── config/
 │   ├── settings.yaml           # アプリケーション設定
@@ -22,8 +22,7 @@ sd-prompt-analyzer/
 │   ├── core/
 │   │   ├── image_parser.py     # PNGメタデータ抽出
 │   │   ├── model_manager.py    # VLMダウンロード・管理
-│   │   ├── vlm_interface.py    # Transformers形式VLM推論
-│   │   └── vlm_interface_gguf.py # GGUF形式VLM推論
+│   │   └── vlm_interface.py    # Transformers形式VLM推論（generate_wan_prompt_stream含む）
 │   ├── ui/
 │   │   └── gradio_app.py       # Gradio UIメインモジュール
 │   └── utils/
@@ -42,9 +41,16 @@ sd-prompt-analyzer/
 | `app.py` | ConfigLoaderで設定を読み込み、PromptAnalyzerUIを起動 |
 | `image_parser.py` | PNG画像からプロンプト、ネガティブプロンプト、設定パラメータを抽出 |
 | `model_manager.py` | Hugging Faceからのモデルダウンロード、ローカルモデル管理 |
-| `vlm_interface.py` | Transformers形式VLMのモデルロード・推論 |
-| `vlm_interface_gguf.py` | GGUF形式（llama.cpp対応）VLMの推論 |
-| `gradio_app.py` | 3タブ構成のWebUI（画像分析、モデル管理、設定） |
+| `vlm_interface.py` | Transformers形式VLMのモデルロード・推論、WAN用プロンプト生成 |
+| `gradio_app.py` | 3タブ構成のWebUI（プロンプト生成、モデル管理、設定） |
+
+## 主要機能
+
+- **SD画像からメタデータ抽出**: PNG画像からプロンプト情報を自動取得
+- **WAN 2.2プロンプト生成**: VLMが画像とSDプロンプトを分析し、動画生成用プロンプトを作成
+- **スタイルプリセット**: 穏やか / ダイナミック / シネマティック / アニメ風
+- **追加指示対応**: ユーザーの追加指示を反映したプロンプト生成
+- **ストリーミング出力**: リアルタイムでプロンプト生成結果を表示
 
 ## コーディング規約
 
@@ -63,7 +69,7 @@ python app.py
 
 ## 設定ファイル
 
-- `config/settings.yaml`: モデル設定、推論パラメータ、UIテーマなど
+- `config/settings.yaml`: モデル設定、推論パラメータ、UIテーマ、WANプロンプト設定など
 - `config/model_presets.yaml`: VLMモデルのHugging FaceリポジトリIDとローカル保存名
 
 ## 開発時の注意

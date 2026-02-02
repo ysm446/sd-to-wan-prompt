@@ -1,19 +1,20 @@
-# SD Prompt Analyzer
+# WAN Prompt Generator
 
-Stable Diffusionで生成された画像とそのプロンプトを、Vision-Language Model（VLM）を使って評価・分析する対話型アプリケーション
+Stable Diffusionで生成された画像とそのプロンプトから、Vision-Language Model（VLM）を使ってWAN 2.2用の動画生成プロンプトを作成するアプリケーション
 
 ## 主要機能
 
 - PNG画像からメタデータ（プロンプト情報）を自動抽出
-- VLMを使った画像とプロンプトの評価・分析
-- ローカルVLMモデルとの対話インターフェース
+- VLMが画像とSDプロンプトを分析し、WAN 2.2用動画プロンプトを生成
+- スタイルプリセット（穏やか / ダイナミック / シネマティック / アニメ風）
+- 追加指示によるカスタマイズ
 - Hugging Faceからのモデル自動ダウンロード
 - 複数モデルの切り替え機能
 
 ## 技術スタック
 
 - **Python 3.10+**
-- **Gradio 4.0+** - ユーザーインターフェース
+- **Gradio 6.0+** - ユーザーインターフェース
 - **Transformers** - VLMモデル推論
 - **Pillow** - 画像処理
 - **PyTorch** - 深層学習フレームワーク
@@ -27,7 +28,7 @@ Stable Diffusionで生成された画像とそのプロンプトを、Vision-Lan
 ## プロジェクト構成
 
 ```
-sd-prompt-analyzer/
+sd-to-wan-prompt/
 ├── data/
 │   ├── sd_outputs/          # SD生成画像の保存先
 │   ├── database/            # メタデータDB
@@ -62,17 +63,17 @@ sd-prompt-analyzer/
 
 ```bash
 git clone <repository-url>
-cd sd-prompt-analyzer
+cd sd-to-wan-prompt
 ```
 
 ### 2. Conda環境の作成（推奨）
 
 ```bash
 # Conda環境を作成
-conda create -n sd-prompt-analyzer python=3.10 -y
+conda create -n sd-to-wan-prompt python=3.10 -y
 
 # 環境をアクティベート
-conda activate sd-prompt-analyzer
+conda activate sd-to-wan-prompt
 ```
 
 ### 3. 依存関係のインストール
@@ -93,7 +94,7 @@ python scripts/setup.py
 
 ```bash
 # Conda環境をアクティベート
-conda activate sd-prompt-analyzer
+conda activate sd-to-wan-prompt
 
 # アプリケーションを起動
 python app.py
@@ -108,14 +109,23 @@ python app.py
    - ダウンロードボタンをクリック
    - ダウンロード完了後、モデルをロード
 
-2. **画像分析タブ**
-   - 画像フォルダのパスを入力
-   - 「フォルダを読み込み」ボタンをクリック
-   - 画像とプロンプト情報が表示される
-   - チャット欄で質問を入力して分析
+2. **プロンプト生成タブ**
+   - SD画像をアップロード（PNGメタデータが自動抽出される）
+   - スタイルプリセットを選択、または「WANプロンプト生成」ボタンをクリック
+   - 追加指示がある場合は入力欄に記載
+   - 生成されたプロンプトをコピーしてWAN 2.2で使用
 
 3. **設定タブ**
    - Temperature、Max Tokens等のパラメータを調整
+
+## スタイルプリセット
+
+| スタイル | 説明 |
+|---------|------|
+| **穏やか** | ゆっくりとした動き、スムーズなカメラパン、呼吸や髪の揺れなど繊細な表現 |
+| **ダイナミック** | エネルギッシュな動き、トラッキングショット、明確なモーション |
+| **シネマティック** | ドラマチックなカメラワーク、感情的な表現、雰囲気のあるライティング |
+| **アニメ風** | 誇張された表現、風エフェクト、日本アニメ風のダイナミックなポーズ |
 
 ## モデルのダウンロード
 
@@ -147,7 +157,7 @@ python app.py
 
 ```yaml
 app:
-  name: "SD Prompt Analyzer"
+  name: "WAN Prompt Generator"
   version: "0.1.0"
 
 paths:
@@ -156,13 +166,25 @@ paths:
 
 model:
   default: "qwen3-vl-4b"
-  device: "auto"
-  dtype: "bfloat16"
+  device: "cuda"
+  dtype: "float16"
 
 inference:
   temperature: 0.7
-  max_tokens: 512
+  max_tokens: 1024
   top_p: 0.9
+
+wan_prompt:
+  default_style: "cinematic"
+  style_presets:
+    calm:
+      description: "穏やかな動き"
+    dynamic:
+      description: "ダイナミック"
+    cinematic:
+      description: "シネマティック"
+    anime:
+      description: "アニメ風"
 
 ui:
   theme: "soft"
@@ -211,29 +233,6 @@ ui:
 ## ライセンス
 
 MIT License
-
-## 開発ロードマップ
-
-### Phase 1: 基本機能（完了）
-- プロジェクト構造作成
-- 画像パーサー実装
-- VLM推論インターフェース実装
-- 基本的なGradio UI
-
-### Phase 2: モデル管理（完了）
-- モデルマネージャー実装
-- HFダウンロード機能
-- UIにモデル管理タブ追加
-
-### Phase 3: UI改善（進行中）
-- 画像ナビゲーション強化
-- チャット履歴機能
-- エラーハンドリング
-
-### Phase 4: 将来的な拡張
-- データベース機能
-- バッチ処理
-- プロンプト改善提案
 
 ## 貢献
 
