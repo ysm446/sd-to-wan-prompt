@@ -272,6 +272,7 @@ class VLMInterface:
         sd_prompt: str,
         additional_instruction: str = "",
         style_preset: str = "cinematic",
+        output_language: str = "English",
         temperature: float = 0.7,
         max_tokens: int = 1024
     ) -> Generator[str, None, None]:
@@ -283,6 +284,7 @@ class VLMInterface:
             sd_prompt: 元のSDプロンプト
             additional_instruction: ユーザーの追加指示
             style_preset: スタイルプリセット名 (calm, dynamic, cinematic, anime)
+            output_language: 出力言語 (English, 日本語)
             temperature: 生成温度
             max_tokens: 最大トークン数
 
@@ -304,8 +306,23 @@ class VLMInterface:
         }
         style_hint = style_hints.get(style_preset, style_hints["cinematic"])
 
-        # WAN用システムプロンプト
-        system_prompt = """You are an expert in creating video generation prompts for WAN 2.2 (a text-to-video AI model).
+        # 言語に応じたシステムプロンプト
+        if output_language == "日本語":
+            system_prompt = """あなたはWAN 2.2（テキストから動画を生成するAIモデル）向けの動画生成プロンプトを作成する専門家です。
+与えられた画像とStable Diffusionのプロンプトを分析し、詳細な動画プロンプトを生成してください。
+
+以下のフォーマットで出力してください：
+
+**シーン**: [画像に基づいて視覚的なシーンを詳しく説明]
+**アクション**: [追加する動き・モーションを具体的に説明]
+**カメラ**: [カメラの動き: 静止、スローパン、ズームイン/アウト、ドリー、トラッキングなど]
+**スタイル**: [視覚的なスタイルと雰囲気を説明]
+
+---
+**WAN 2.2用プロンプト**:
+[上記の要素をすべて組み合わせた1つの段落を書いてください。WAN 2.2にそのままコピー＆ペーストできるようにしてください。簡潔かつ描写的に。動きと映画的な品質に焦点を当ててください。]"""
+        else:
+            system_prompt = """You are an expert in creating video generation prompts for WAN 2.2 (a text-to-video AI model).
 Your task is to analyze the given image and its Stable Diffusion prompt, then generate a detailed video prompt.
 
 Output in the following format:
@@ -328,7 +345,10 @@ Style Direction: {style_hint}"""
         if additional_instruction:
             user_message += f"\n\nAdditional Instructions: {additional_instruction}"
 
-        user_message += "\n\nPlease generate a WAN 2.2 video prompt based on this image and information."
+        if output_language == "日本語":
+            user_message += "\n\nこの画像と情報に基づいて、WAN 2.2用の動画プロンプトを日本語で生成してください。"
+        else:
+            user_message += "\n\nPlease generate a WAN 2.2 video prompt based on this image and information."
 
         # システムメッセージとユーザーメッセージを構築
         conversation = [

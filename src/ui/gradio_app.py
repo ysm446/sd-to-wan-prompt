@@ -112,6 +112,16 @@ class PromptAnalyzerUI:
                                 lines=2
                             )
 
+                            # 出力言語選択
+                            with gr.Row():
+                                language_dropdown = gr.Dropdown(
+                                    label="出力言語",
+                                    choices=["English", "日本語"],
+                                    value="English",
+                                    interactive=True,
+                                    scale=1
+                                )
+
                             # スタイルプリセットボタン
                             gr.Markdown("### スタイルプリセット")
                             with gr.Row():
@@ -222,7 +232,7 @@ class PromptAnalyzerUI:
             # WANプロンプト生成
             generate_btn.click(
                 fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, temperature_slider, max_tokens_slider],
+                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
                 outputs=[output_textbox, context_info, model_status]
             )
 
@@ -232,7 +242,7 @@ class PromptAnalyzerUI:
                 outputs=[current_style]
             ).then(
                 fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, temperature_slider, max_tokens_slider],
+                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
                 outputs=[output_textbox, context_info, model_status]
             )
 
@@ -241,7 +251,7 @@ class PromptAnalyzerUI:
                 outputs=[current_style]
             ).then(
                 fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, temperature_slider, max_tokens_slider],
+                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
                 outputs=[output_textbox, context_info, model_status]
             )
 
@@ -250,7 +260,7 @@ class PromptAnalyzerUI:
                 outputs=[current_style]
             ).then(
                 fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, temperature_slider, max_tokens_slider],
+                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
                 outputs=[output_textbox, context_info, model_status]
             )
 
@@ -259,7 +269,7 @@ class PromptAnalyzerUI:
                 outputs=[current_style]
             ).then(
                 fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, temperature_slider, max_tokens_slider],
+                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
                 outputs=[output_textbox, context_info, model_status]
             )
 
@@ -375,10 +385,11 @@ class PromptAnalyzerUI:
         self,
         additional_instruction: str,
         style_preset: str,
+        output_language: str,
         temperature: float,
         max_tokens: int
     ):
-        """WAN 2.1プロンプトを生成（ストリーミング対応）"""
+        """WAN 2.2プロンプトを生成（ストリーミング対応）"""
         max_tokens_int = int(max_tokens)
 
         # モデルが未ロードで、モデルが選択されている場合は自動ロード
@@ -411,6 +422,7 @@ class PromptAnalyzerUI:
                 sd_prompt=prompt_text,
                 additional_instruction=additional_instruction or "",
                 style_preset=style_preset or "cinematic",
+                output_language=output_language or "English",
                 temperature=temperature,
                 max_tokens=max_tokens_int
             ):
