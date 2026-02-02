@@ -1,0 +1,39 @@
+app:
+  name: "WAN Prompt Generator"
+  version: "0.1.0"
+
+paths:
+  image_folder: "./data/sd_outputs"
+  models_dir: "./models"
+  database_dir: "./data/database"
+
+model:
+  default: "qwen2-vl-2b"  # RTX 4070環境用（VRAM 12GB）
+  device: "cuda"  # GPUモード
+  dtype: "float16"  # GPU使用時はfloat16で高速化
+
+inference:
+  temperature: 0.7
+  max_tokens: 1024  # WAN用に増加
+  top_p: 0.9
+
+wan_prompt:
+  default_style: "cinematic"
+  style_presets:
+    calm:
+      description: "穏やかな動き"
+      hint: "gentle movements, slow camera"
+    dynamic:
+      description: "ダイナミック"
+      hint: "energetic motion, tracking shots"
+    cinematic:
+      description: "シネマティック"
+      hint: "dramatic angles, emotional"
+    anime:
+      description: "アニメ風"
+      hint: "exaggerated expressions, wind effects"
+
+ui:
+  theme: "soft"
+  share: false
+  server_port: 7860
