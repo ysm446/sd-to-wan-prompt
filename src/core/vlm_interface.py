@@ -337,15 +337,28 @@ Output in the following format:
 [Write a single paragraph combining all elements. This should be copy-paste ready for WAN 2.2. Write in English, be concise but descriptive. Focus on motion and cinematic qualities.]"""
 
         # ユーザーメッセージを構築
-        user_message = f"""Original SD Prompt:
+        has_sd_prompt = bool(sd_prompt.strip())
+
+        if has_sd_prompt:
+            # SDプロンプトがある場合（従来の動作）
+            user_message = f"""Original SD Prompt:
 {sd_prompt}"""
+        else:
+            # SDプロンプトがない場合（一般画像）
+            user_message = "This is a general image (not from Stable Diffusion)."
 
         # スタイルヒントがある場合のみ追加
         if style_hint:
             user_message += f"\n\nStyle Direction: {style_hint}"
 
+        # 追加指示の扱い
         if additional_instruction:
-            user_message += f"\n\nAdditional Instructions: {additional_instruction}"
+            if has_sd_prompt:
+                # SDプロンプトがある場合は「追加指示」として追加
+                user_message += f"\n\nAdditional Instructions: {additional_instruction}"
+            else:
+                # SDプロンプトがない場合は「主要な指示」として強調
+                user_message += f"\n\nUser Instructions (IMPORTANT - follow these closely): {additional_instruction}"
 
         if output_language == "日本語":
             user_message += "\n\nこの画像と情報に基づいて、WAN 2.2用の動画プロンプトを日本語で生成してください。"
