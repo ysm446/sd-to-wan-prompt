@@ -122,17 +122,19 @@ class PromptAnalyzerUI:
                                     scale=1
                                 )
 
-                            # スタイルプリセットボタン
-                            gr.Markdown("### スタイルプリセット")
-                            with gr.Row():
-                                style_calm = gr.Button("穏やか", size="sm")
-                                style_dynamic = gr.Button("ダイナミック", size="sm")
-                            with gr.Row():
-                                style_cinematic = gr.Button("シネマティック", size="sm")
-                                style_anime = gr.Button("アニメ風", size="sm")
-
-                            # 現在選択中のスタイル
-                            current_style = gr.State(value=None)
+                            # スタイルプリセット選択
+                            style_dropdown = gr.Dropdown(
+                                label="スタイルプリセット",
+                                choices=[
+                                    ("なし", None),
+                                    ("穏やか", "calm"),
+                                    ("ダイナミック", "dynamic"),
+                                    ("シネマティック", "cinematic"),
+                                    ("アニメ風", "anime")
+                                ],
+                                value=None,
+                                interactive=True
+                            )
 
                             generate_btn = gr.Button("WANプロンプト生成", variant="primary", size="lg")
 
@@ -232,44 +234,7 @@ class PromptAnalyzerUI:
             # WANプロンプト生成
             generate_btn.click(
                 fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
-                outputs=[output_textbox, context_info, model_status]
-            )
-
-            # スタイルプリセットボタン - スタイルを設定して生成
-            style_calm.click(
-                fn=lambda: "calm",
-                outputs=[current_style]
-            ).then(
-                fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
-                outputs=[output_textbox, context_info, model_status]
-            )
-
-            style_dynamic.click(
-                fn=lambda: "dynamic",
-                outputs=[current_style]
-            ).then(
-                fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
-                outputs=[output_textbox, context_info, model_status]
-            )
-
-            style_cinematic.click(
-                fn=lambda: "cinematic",
-                outputs=[current_style]
-            ).then(
-                fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
-                outputs=[output_textbox, context_info, model_status]
-            )
-
-            style_anime.click(
-                fn=lambda: "anime",
-                outputs=[current_style]
-            ).then(
-                fn=self.generate_wan_prompt,
-                inputs=[additional_input, current_style, language_dropdown, temperature_slider, max_tokens_slider],
+                inputs=[additional_input, style_dropdown, language_dropdown, temperature_slider, max_tokens_slider],
                 outputs=[output_textbox, context_info, model_status]
             )
 
