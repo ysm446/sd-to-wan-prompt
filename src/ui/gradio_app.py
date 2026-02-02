@@ -132,7 +132,7 @@ class PromptAnalyzerUI:
                                 style_anime = gr.Button("アニメ風", size="sm")
 
                             # 現在選択中のスタイル
-                            current_style = gr.State(value="cinematic")
+                            current_style = gr.State(value=None)
 
                             generate_btn = gr.Button("WANプロンプト生成", variant="primary", size="lg")
 
@@ -421,7 +421,7 @@ class PromptAnalyzerUI:
                 image_path=self.current_image_path,
                 sd_prompt=prompt_text,
                 additional_instruction=additional_instruction or "",
-                style_preset=style_preset or "cinematic",
+                style_preset=style_preset,
                 output_language=output_language or "English",
                 temperature=temperature,
                 max_tokens=max_tokens_int

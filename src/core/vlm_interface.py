@@ -297,14 +297,14 @@ class VLMInterface:
         # 画像を読み込み
         image = Image.open(image_path).convert('RGB')
 
-        # スタイルプリセットに基づくヒント
+        # スタイルプリセットに基づくヒント（Noneや空の場合はスタイルヒントなし）
         style_hints = {
             "calm": "Focus on gentle, slow movements. Camera should move slowly with smooth pans. Actions should be subtle like breathing, hair swaying, or soft expressions.",
             "dynamic": "Focus on energetic, fast movements. Camera can use tracking shots or quick cuts. Actions should be dynamic with clear motion.",
             "cinematic": "Focus on dramatic, cinematic quality. Camera should use dolly movements or dramatic angles. Include emotional expressions and atmospheric lighting.",
             "anime": "Focus on anime-style movements. Include exaggerated expressions, wind effects, and dynamic poses typical of Japanese animation."
         }
-        style_hint = style_hints.get(style_preset, style_hints["cinematic"])
+        style_hint = style_hints.get(style_preset) if style_preset else None
 
         # 言語に応じたシステムプロンプト
         if output_language == "日本語":
@@ -338,9 +338,11 @@ Output in the following format:
 
         # ユーザーメッセージを構築
         user_message = f"""Original SD Prompt:
-{sd_prompt}
+{sd_prompt}"""
 
-Style Direction: {style_hint}"""
+        # スタイルヒントがある場合のみ追加
+        if style_hint:
+            user_message += f"\n\nStyle Direction: {style_hint}"
 
         if additional_instruction:
             user_message += f"\n\nAdditional Instructions: {additional_instruction}"
