@@ -112,27 +112,42 @@ class PromptAnalyzerUI:
                                 lines=2
                             )
 
-                            # 出力言語選択
+                            # 出力言語・スタイルプリセット選択（横一列）
+                            cached_settings = self.load_generation_settings()
                             with gr.Row():
                                 language_dropdown = gr.Dropdown(
                                     label="出力言語",
                                     choices=["English", "日本語"],
-                                    value="English",
+                                    value=cached_settings.get("language", "English"),
+                                    interactive=True,
+                                    scale=1
+                                )
+                                style_dropdown = gr.Dropdown(
+                                    label="スタイルプリセット",
+                                    choices=[
+                                        ("なし", None),
+                                        ("穏やか", "calm"),
+                                        ("ダイナミック", "dynamic"),
+                                        ("シネマティック", "cinematic"),
+                                        ("アニメ風", "anime")
+                                    ],
+                                    value=cached_settings.get("style_preset"),
                                     interactive=True,
                                     scale=1
                                 )
 
-                            # スタイルプリセット選択
-                            style_dropdown = gr.Dropdown(
-                                label="スタイルプリセット",
+                            # 出力項目選択
+                            cached_sections = self.load_output_sections()
+                            output_sections = gr.CheckboxGroup(
+                                label="出力項目",
                                 choices=[
-                                    ("なし", None),
-                                    ("穏やか", "calm"),
-                                    ("ダイナミック", "dynamic"),
-                                    ("シネマティック", "cinematic"),
-                                    ("アニメ風", "anime")
+                                    ("シーン", "scene"),
+                                    ("アクション", "action"),
+                                    ("カメラ", "camera"),
+                                    ("スタイル", "style"),
+                                    ("WANプロンプト", "prompt")
                                 ],
-                                value=None,
+                                value=cached_sections,
                                 interactive=True
                             )
 
@@ -234,8 +249,27 @@ class PromptAnalyzerUI:
             # WANプロンプト生成
             generate_btn.click(
                 fn=self.generate_wan_prompt,
-                inputs=[additional_input, style_dropdown, language_dropdown, temperature_slider, max_tokens_slider],
+                inputs=[additional_input, style_dropdown, language_dropdown, output_sections, temperature_slider, max_tokens_slider],
                 outputs=[output_textbox, context_info, model_status]
+            )
+
+            # 出力項目の変更時にキャッシュを保存
+            output_sections.change(
+                fn=self.save_output_sections,
+                inputs=[output_sections],
+                outputs=[]
+            )
+
+            # 言語・スタイルの変更時にキャッシュを保存
+            language_dropdown.change(
+                fn=lambda lang, style: self.save_generation_settings(lang, style),
+                inputs=[language_dropdown, style_dropdown],
+                outputs=[]
+            )
+            style_dropdown.change(
+                fn=lambda lang, style: self.save_generation_settings(lang, style),
+                inputs=[language_dropdown, style_dropdown],
+                outputs=[]
             )
 
             # モデル管理
@@ -351,11 +385,15 @@ class PromptAnalyzerUI:
         additional_instruction: str,
         style_preset: str,
         output_language: str,
+        output_sections: List[str],
         temperature: float,
         max_tokens: int
     ):
         """WAN 2.2プロンプトを生成（ストリーミング対応）"""
         max_tokens_int = int(max_tokens)
+        # 出力項目が空の場合はデフォルトを使用
+        if not output_sections:
+            output_sections = ["scene", "action", "camera", "style", "prompt"]
 
         # モデルが未ロードで、モデルが選択されている場合は自動ロード
         if self.current_vlm is None and self.selected_model_path:
@@ -388,6 +426,7 @@ class PromptAnalyzerUI:
                 additional_instruction=additional_instruction or "",
                 style_preset=style_preset,
                 output_language=output_language or "English",
+                output_sections=output_sections,
                 temperature=temperature,
                 max_tokens=max_tokens_int
             ):
@@ -562,6 +601,68 @@ class PromptAnalyzerUI:
                 return data.get("inference_settings", {})
         except Exception as e:
             print(f"警告: 推論設定の読み込みに失敗しました: {e}")
+        return {}
+
+    def save_output_sections(self, sections: List[str]):
+        """出力項目の選択状態を保存"""
+        try:
+            data = {}
+            if self.last_model_cache_file.exists():
+                try:
+                    data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+                except:
+                    pass
+
+            data["output_sections"] = sections
+
+            self.last_model_cache_file.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding='utf-8'
+            )
+        except Exception as e:
+            print(f"警告: 出力項目の保存に失敗しました: {e}")
+
+    def load_output_sections(self) -> List[str]:
+        """出力項目の選択状態を読み込み"""
+        default_sections = ["scene", "action", "camera", "style", "prompt"]
+        try:
+            if self.last_model_cache_file.exists():
+                data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+                return data.get("output_sections", default_sections)
+        except Exception as e:
+            print(f"警告: 出力項目の読み込みに失敗しました: {e}")
+        return default_sections
+
+    def save_generation_settings(self, language: str, style_preset: str):
+        """言語・スタイルプリセットの選択状態を保存"""
+        try:
+            data = {}
+            if self.last_model_cache_file.exists():
+                try:
+                    data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+                except:
+                    pass
+
+            data["generation_settings"] = {
+                "language": language,
+                "style_preset": style_preset
+            }
+
+            self.last_model_cache_file.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding='utf-8'
+            )
+        except Exception as e:
+            print(f"警告: 生成設定の保存に失敗しました: {e}")
+
+    def load_generation_settings(self) -> dict:
+        """言語・スタイルプリセットの選択状態を読み込み"""
+        try:
+            if self.last_model_cache_file.exists():
+                data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+                return data.get("generation_settings", {})
+        except Exception as e:
+            print(f"警告: 生成設定の読み込みに失敗しました: {e}")
         return {}
 
     def download_model(self, repo_id: str, local_name: str) -> str:

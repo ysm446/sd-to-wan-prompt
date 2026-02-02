@@ -2,7 +2,7 @@
 Vision-Language Model推論インターフェース
 """
 from pathlib import Path
-from typing import Optional, Generator
+from typing import Optional, Generator, List
 from threading import Thread
 import torch
 import json
@@ -273,6 +273,7 @@ class VLMInterface:
         additional_instruction: str = "",
         style_preset: str = "cinematic",
         output_language: str = "English",
+        output_sections: List[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 1024
     ) -> Generator[str, None, None]:
@@ -285,12 +286,16 @@ class VLMInterface:
             additional_instruction: ユーザーの追加指示
             style_preset: スタイルプリセット名 (calm, dynamic, cinematic, anime)
             output_language: 出力言語 (English, 日本語)
+            output_sections: 出力する項目のリスト (scene, action, camera, style, prompt)
             temperature: 生成温度
             max_tokens: 最大トークン数
 
         Yields:
             生成されたテキストの断片
         """
+        # デフォルトの出力項目
+        if output_sections is None:
+            output_sections = ["scene", "action", "camera", "style", "prompt"]
         if self.model is None or self.processor is None:
             raise RuntimeError("モデルがロードされていません")
 
@@ -306,35 +311,45 @@ class VLMInterface:
         }
         style_hint = style_hints.get(style_preset) if style_preset else None
 
-        # 言語に応じたシステムプロンプト
+        # 出力項目テンプレート
+        section_templates_ja = {
+            "scene": "**シーン**: [画像に基づいて視覚的なシーンを詳しく説明]",
+            "action": "**アクション**: [追加する動き・モーションを具体的に説明]",
+            "camera": "**カメラ**: [カメラの動き: 静止、スローパン、ズームイン/アウト、ドリー、トラッキングなど]",
+            "style": "**スタイル**: [視覚的なスタイルと雰囲気を説明]",
+            "prompt": "---\n**WAN 2.2用プロンプト**:\n[上記の要素をすべて組み合わせた1つの段落を書いてください。WAN 2.2にそのままコピー＆ペーストできるようにしてください。簡潔かつ描写的に。動きと映画的な品質に焦点を当ててください。]"
+        }
+        section_templates_en = {
+            "scene": "**Scene**: [Describe the visual scene in detail based on the image]",
+            "action": "**Action**: [Describe the motion/movement to add - be specific about what moves and how]",
+            "camera": "**Camera**: [Describe camera movement: static, slow pan, zoom in/out, dolly, tracking, etc.]",
+            "style": "**Style**: [Describe the visual style and mood]",
+            "prompt": "---\n**Final Prompt for WAN 2.2**:\n[Write a single paragraph combining all elements. This should be copy-paste ready for WAN 2.2. Write in English, be concise but descriptive. Focus on motion and cinematic qualities.]"
+        }
+
+        # 言語に応じたシステムプロンプトを動的構築
         if output_language == "日本語":
-            system_prompt = """あなたはWAN 2.2（テキストから動画を生成するAIモデル）向けの動画生成プロンプトを作成する専門家です。
-与えられた画像とStable Diffusionのプロンプトを分析し、詳細な動画プロンプトを生成してください。
+            # 選択された項目のみ含める
+            format_lines = [section_templates_ja[s] for s in output_sections if s in section_templates_ja]
+            format_section = "\n".join(format_lines) if format_lines else "自由な形式で出力してください。"
 
-以下のフォーマットで出力してください：
+            system_prompt = f"""あなたはWAN 2.2（テキストから動画を生成するAIモデル）向けの動画生成プロンプトを作成する専門家です。
+与えられた画像とStable Diffusionのプロンプトを分析し、動画プロンプトを生成してください。
 
-**シーン**: [画像に基づいて視覚的なシーンを詳しく説明]
-**アクション**: [追加する動き・モーションを具体的に説明]
-**カメラ**: [カメラの動き: 静止、スローパン、ズームイン/アウト、ドリー、トラッキングなど]
-**スタイル**: [視覚的なスタイルと雰囲気を説明]
+【重要】以下の指定されたセクションのみを出力してください。指定されていないセクションは出力しないでください。各セクションは簡潔に1-2文で書いてください。
 
----
-**WAN 2.2用プロンプト**:
-[上記の要素をすべて組み合わせた1つの段落を書いてください。WAN 2.2にそのままコピー＆ペーストできるようにしてください。簡潔かつ描写的に。動きと映画的な品質に焦点を当ててください。]"""
+{format_section}"""
         else:
-            system_prompt = """You are an expert in creating video generation prompts for WAN 2.2 (a text-to-video AI model).
-Your task is to analyze the given image and its Stable Diffusion prompt, then generate a detailed video prompt.
+            # 選択された項目のみ含める
+            format_lines = [section_templates_en[s] for s in output_sections if s in section_templates_en]
+            format_section = "\n".join(format_lines) if format_lines else "Output in a free format."
 
-Output in the following format:
+            system_prompt = f"""You are an expert in creating video generation prompts for WAN 2.2 (a text-to-video AI model).
+Your task is to analyze the given image and its Stable Diffusion prompt, then generate a video prompt.
 
-**Scene**: [Describe the visual scene in detail based on the image]
-**Action**: [Describe the motion/movement to add - be specific about what moves and how]
-**Camera**: [Describe camera movement: static, slow pan, zoom in/out, dolly, tracking, etc.]
-**Style**: [Describe the visual style and mood]
+**IMPORTANT:** Output ONLY the sections specified below. Do NOT add any other sections. Keep each section concise (1-2 sentences).
 
----
-**Final Prompt for WAN 2.2**:
-[Write a single paragraph combining all elements. This should be copy-paste ready for WAN 2.2. Write in English, be concise but descriptive. Focus on motion and cinematic qualities.]"""
+{format_section}"""
 
         # ユーザーメッセージを構築
         has_sd_prompt = bool(sd_prompt.strip())
