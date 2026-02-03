@@ -43,9 +43,23 @@ class PromptAnalyzerUI:
         - タブ3: 設定
         """
         # カスタムCSS（フォント変更）
+        # 画像アップロードエリアのフルスクリーン／拡大アイコンを非表示にするルールを追加
         custom_css = """
         * {
             font-family: "Segoe UI", "Yu Gothic", "Meiryo", Arial, sans-serif !important;
+        }
+        /* Hide Gradio image fullscreen/expand icons by common attributes and keywords (case-insensitive) */
+        button[aria-label*="full" i],
+        button[title*="full" i],
+        button[aria-label*="expand" i],
+        button[title*="expand" i],
+        button[aria-label*="fullscreen" i],
+        button[title*="fullscreen" i] {
+            display: none !important;
+        }
+        /* Additional selectors for possible Gradio class names */
+        .gr-image .gr-button, .gr-image .gr-button--icon, .gr-image__open-fullscreen, .gr-image__expand {
+            display: none !important;
         }
         """
 
