@@ -61,7 +61,7 @@ desktop.ini
 *~
 
 # アプリケーションキャッシュ
-.last_model_cache.json
+settings_cache.json
 
 # Windows特殊ファイル（誤作成防止）
 nul

@@ -27,7 +27,7 @@ class PromptAnalyzerUI:
         self.current_image_path: Optional[str] = None
         self.current_metadata: Optional[Dict] = None
         self.selected_model_path: Optional[str] = None  # 選択されているモデルのパス
-        self.last_model_cache_file = Path(".last_model_cache.json")
+        self.settings_cache_file = Path("settings_cache.json")
 
         # モデルプリセットを読み込み
         config_loader = ConfigLoader()
@@ -66,10 +66,13 @@ class PromptAnalyzerUI:
                         # 左側: 画像表示
                         with gr.Column(scale=1):
                             image_display = gr.Image(
-                                label="SD画像をアップロード",
+                                label="画像をアップロード",
                                 type="filepath",
                                 sources=["upload"],
                                 height=400
+                            )
+                            image_filename_display = gr.Markdown(
+                                value="<small style='color: gray;'>--</small>"
                             )
 
                             # プロンプト情報表示
@@ -170,6 +173,23 @@ class PromptAnalyzerUI:
                                     interactive=False
                                 )
 
+                            # テキストファイル保存
+                            cached_save_dir = self.load_save_directory()
+                            with gr.Accordion("テキストファイル保存", open=False):
+                                save_dir_input = gr.Textbox(
+                                    label="保存先フォルダ",
+                                    placeholder="例: D:\\images\\output",
+                                    value=cached_save_dir,
+                                    lines=1
+                                )
+                                save_btn = gr.Button(
+                                    "📄 テキストファイルに保存", variant="primary"
+                                )
+                                save_status = gr.Textbox(
+                                    label="保存結果",
+                                    interactive=False
+                                )
+
                 # タブ2: モデル管理
                 with gr.Tab("モデル管理"):
                     gr.Markdown("### ローカルモデル")
@@ -243,7 +263,7 @@ class PromptAnalyzerUI:
             image_display.change(
                 fn=self.on_image_upload,
                 inputs=[image_display],
-                outputs=[prompt_display, negative_prompt_display, settings_display]
+                outputs=[image_filename_display, prompt_display, negative_prompt_display, settings_display]
             )
 
             # WANプロンプト生成
@@ -251,6 +271,20 @@ class PromptAnalyzerUI:
                 fn=self.generate_wan_prompt,
                 inputs=[additional_input, style_dropdown, language_dropdown, output_sections, temperature_slider, max_tokens_slider],
                 outputs=[output_textbox, context_info, model_status]
+            )
+
+            # テキストファイル保存
+            save_btn.click(
+                fn=self.save_prompt_to_file,
+                inputs=[save_dir_input, output_textbox, additional_input],
+                outputs=[save_status]
+            )
+
+            # 保存先フォルダの変更時にキャッシュを保存
+            save_dir_input.change(
+                fn=self.save_save_directory,
+                inputs=[save_dir_input],
+                outputs=[]
             )
 
             # 出力項目の変更時にキャッシュを保存
@@ -347,7 +381,7 @@ class PromptAnalyzerUI:
             if not image_path:
                 self.current_image_path = None
                 self.current_metadata = None
-                return "", "", "{}"
+                return "<small style='color: gray;'>--</small>", "", "", "{}"
 
             # 画像パスを保存
             self.current_image_path = image_path
@@ -358,7 +392,12 @@ class PromptAnalyzerUI:
             # SettingsをJSON文字列に変換
             settings_json = json.dumps(self.current_metadata['settings'], indent=2, ensure_ascii=False)
 
+            # ファイル名を表示
+            filename = Path(image_path).name
+            filename_md = f"<small>📁 {filename}</small>"
+
             return (
+                filename_md,
                 self.current_metadata['prompt'],
                 self.current_metadata['negative_prompt'],
                 settings_json
@@ -370,7 +409,7 @@ class PromptAnalyzerUI:
             # エラーが発生した場合も状態をクリア
             self.current_image_path = None
             self.current_metadata = None
-            return "画像の読み込みに失敗しました。もう一度ドロップしてください。", "", "{}"
+            return "<small style='color: gray;'>--</small>", "画像の読み込みに失敗しました。もう一度ドロップしてください。", "", "{}"
 
     def _get_model_status(self) -> str:
         """現在のモデル状態を取得"""
@@ -542,16 +581,16 @@ class PromptAnalyzerUI:
         try:
             # 既存のデータを読み込み
             data = {}
-            if self.last_model_cache_file.exists():
+            if self.settings_cache_file.exists():
                 try:
-                    data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+                    data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
                 except:
                     pass
 
             # モデルパスを更新
             data["last_model"] = model_path
 
-            self.last_model_cache_file.write_text(
+            self.settings_cache_file.write_text(
                 json.dumps(data, ensure_ascii=False, indent=2),
                 encoding='utf-8'
             )
@@ -563,9 +602,9 @@ class PromptAnalyzerUI:
         try:
             # 既存のデータを読み込み
             data = {}
-            if self.last_model_cache_file.exists():
+            if self.settings_cache_file.exists():
                 try:
-                    data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+                    data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
                 except:
                     pass
 
@@ -576,7 +615,7 @@ class PromptAnalyzerUI:
                 "top_p": top_p
             }
 
-            self.last_model_cache_file.write_text(
+            self.settings_cache_file.write_text(
                 json.dumps(data, ensure_ascii=False, indent=2),
                 encoding='utf-8'
             )
@@ -586,8 +625,8 @@ class PromptAnalyzerUI:
     def load_last_model_path(self) -> Optional[str]:
         """最後に使用したモデルのパスを読み込み"""
         try:
-            if self.last_model_cache_file.exists():
-                data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+            if self.settings_cache_file.exists():
+                data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
                 return data.get("last_model")
         except Exception as e:
             print(f"警告: モデルパスの読み込みに失敗しました: {e}")
@@ -596,8 +635,8 @@ class PromptAnalyzerUI:
     def load_inference_settings(self) -> dict:
         """推論設定を読み込み"""
         try:
-            if self.last_model_cache_file.exists():
-                data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+            if self.settings_cache_file.exists():
+                data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
                 return data.get("inference_settings", {})
         except Exception as e:
             print(f"警告: 推論設定の読み込みに失敗しました: {e}")
@@ -607,15 +646,15 @@ class PromptAnalyzerUI:
         """出力項目の選択状態を保存"""
         try:
             data = {}
-            if self.last_model_cache_file.exists():
+            if self.settings_cache_file.exists():
                 try:
-                    data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+                    data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
                 except:
                     pass
 
             data["output_sections"] = sections
 
-            self.last_model_cache_file.write_text(
+            self.settings_cache_file.write_text(
                 json.dumps(data, ensure_ascii=False, indent=2),
                 encoding='utf-8'
             )
@@ -626,8 +665,8 @@ class PromptAnalyzerUI:
         """出力項目の選択状態を読み込み"""
         default_sections = ["scene", "action", "camera", "style", "prompt"]
         try:
-            if self.last_model_cache_file.exists():
-                data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+            if self.settings_cache_file.exists():
+                data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
                 return data.get("output_sections", default_sections)
         except Exception as e:
             print(f"警告: 出力項目の読み込みに失敗しました: {e}")
@@ -637,9 +676,9 @@ class PromptAnalyzerUI:
         """言語・スタイルプリセットの選択状態を保存"""
         try:
             data = {}
-            if self.last_model_cache_file.exists():
+            if self.settings_cache_file.exists():
                 try:
-                    data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+                    data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
                 except:
                     pass
 
@@ -648,7 +687,7 @@ class PromptAnalyzerUI:
                 "style_preset": style_preset
             }
 
-            self.last_model_cache_file.write_text(
+            self.settings_cache_file.write_text(
                 json.dumps(data, ensure_ascii=False, indent=2),
                 encoding='utf-8'
             )
@@ -658,12 +697,90 @@ class PromptAnalyzerUI:
     def load_generation_settings(self) -> dict:
         """言語・スタイルプリセットの選択状態を読み込み"""
         try:
-            if self.last_model_cache_file.exists():
-                data = json.loads(self.last_model_cache_file.read_text(encoding='utf-8'))
+            if self.settings_cache_file.exists():
+                data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
                 return data.get("generation_settings", {})
         except Exception as e:
             print(f"警告: 生成設定の読み込みに失敗しました: {e}")
         return {}
+
+    def save_save_directory(self, save_dir: str):
+        """保存先フォルダをキャッシュに保存"""
+        try:
+            data = {}
+            if self.settings_cache_file.exists():
+                try:
+                    data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
+                except:
+                    pass
+
+            data["save_directory"] = save_dir
+
+            self.settings_cache_file.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding='utf-8'
+            )
+        except Exception as e:
+            print(f"警告: 保存先フォルダの保存に失敗しました: {e}")
+
+    def load_save_directory(self) -> str:
+        """保存先フォルダをキャッシュから読み込み"""
+        try:
+            if self.settings_cache_file.exists():
+                data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
+                return data.get("save_directory", "")
+        except Exception as e:
+            print(f"警告: 保存先フォルダの読み込みに失敗しました: {e}")
+        return ""
+
+    def save_prompt_to_file(
+        self,
+        save_dir: str,
+        output_text: str,
+        additional_instruction: str
+    ) -> str:
+        """元のプロンプト・追加指示・生成プロンプトをテキストファイルに保存"""
+        if not self.current_image_path:
+            return "エラー: 画像がアップロードされていません"
+
+        if not save_dir or not save_dir.strip():
+            return "エラー: 保存先フォルダを指定してください"
+
+        if not output_text or not output_text.strip():
+            return "エラー: 生成されたプロンプトがありません"
+
+        # 画像ファイル名から .txt のファイル名を作成
+        image_filename = Path(self.current_image_path).stem + ".txt"
+        save_path = Path(save_dir.strip()) / image_filename
+
+        # テキスト内容を組み立て
+        lines: list[str] = []
+
+        # 元のプロンプト
+        original_prompt = ""
+        if self.current_metadata:
+            original_prompt = self.current_metadata.get('prompt', '')
+        if original_prompt:
+            lines.append("=== Original Prompt ===")
+            lines.append(original_prompt)
+            lines.append("")
+
+        # 追加指示
+        if additional_instruction and additional_instruction.strip():
+            lines.append("=== Additional Instruction ===")
+            lines.append(additional_instruction.strip())
+            lines.append("")
+
+        # 生成されたWANプロンプト
+        lines.append("=== Generated WAN Prompt ===")
+        lines.append(output_text.strip())
+        lines.append("")
+
+        try:
+            save_path.write_text("\n".join(lines), encoding='utf-8')
+            return f"✓ 保存しました: {save_path}"
+        except Exception as e:
+            return f"✗ 保存に失敗しました: {e}"
 
     def download_model(self, repo_id: str, local_name: str) -> str:
         """モデルをダウンロード"""
