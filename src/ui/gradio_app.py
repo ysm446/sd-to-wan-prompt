@@ -259,10 +259,15 @@ class PromptAnalyzerUI:
                             )
 
             # イベントハンドラー
-            # 画像アップロード（changeイベントで処理）
-            image_display.change(
+            # 画像アップロード（upload/clearイベントで分離して処理）
+            image_display.upload(
                 fn=self.on_image_upload,
                 inputs=[image_display],
+                outputs=[image_filename_display, prompt_display, negative_prompt_display, settings_display]
+            )
+            image_display.clear(
+                fn=self.on_image_clear,
+                inputs=[],
                 outputs=[image_filename_display, prompt_display, negative_prompt_display, settings_display]
             )
 
@@ -374,14 +379,18 @@ class PromptAnalyzerUI:
 
         return interface
 
+    def on_image_clear(self) -> Tuple:
+        """画像がクリアされたときの処理"""
+        self.current_image_path = None
+        self.current_metadata = None
+        return "<small style='color: gray;'>--</small>", "", "", "{}"
+
     def on_image_upload(self, image_path: str) -> Tuple:
         """画像がアップロードされたときの処理"""
         try:
             # 画像パスがNoneまたは空の場合はクリア
             if not image_path:
-                self.current_image_path = None
-                self.current_metadata = None
-                return "<small style='color: gray;'>--</small>", "", "", "{}"
+                return self.on_image_clear()
 
             # 画像パスを保存
             self.current_image_path = image_path
