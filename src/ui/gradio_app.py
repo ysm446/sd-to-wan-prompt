@@ -529,9 +529,12 @@ class PromptAnalyzerUI:
         # 前回のモデルがまだ存在する場合は初期値に設定
         if last_model_path and last_model_path in choices:
             self.selected_model_path = last_model_path
-            return df_data, gr.Dropdown(choices=choices, value=last_model_path)
+            # ドロップダウンのvalueを設定してUIに表示
+            return df_data, gr.update(choices=choices, value=last_model_path)
 
-        return df_data, gr.Dropdown(choices=choices)
+        # 前回のモデルがない場合は選択状態をクリア
+        self.selected_model_path = None
+        return df_data, gr.update(choices=choices, value=None)
 
     def load_vlm_model(self, model_path: str) -> Tuple[str, str]:
         """VLMモデルをロード"""
