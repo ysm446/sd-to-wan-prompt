@@ -117,10 +117,19 @@ class PromptAnalyzerUI:
                                 max_lines=25,
                                 interactive=True  # コピーできるようにinteractiveに
                             )
-                            context_info = gr.Markdown(
-                                value="<small style='color: gray;'>--</small>",
-                                elem_id="context-info"
-                            )
+                            with gr.Row():
+                                context_info = gr.Markdown(
+                                    value="<small style='color: gray;'>--</small>",
+                                    elem_id="context-info"
+                                )
+                                mini_unload_btn = gr.Button(
+                                    value="モデル未ロード",
+                                    variant="secondary",
+                                    size="sm",
+                                    interactive=False,
+                                    min_width=60,
+                                    scale=0
+                                )
 
                             # 追加指示入力欄
                             additional_input = gr.Textbox(
@@ -289,7 +298,7 @@ class PromptAnalyzerUI:
             generate_btn.click(
                 fn=self.generate_wan_prompt,
                 inputs=[additional_input, style_dropdown, language_dropdown, output_sections, temperature_slider, max_tokens_slider],
-                outputs=[output_textbox, context_info, model_status]
+                outputs=[output_textbox, context_info, model_status, mini_unload_btn]
             )
 
             # テキストファイル保存
@@ -343,14 +352,19 @@ class PromptAnalyzerUI:
             )
 
             load_model_btn.click(
-                fn=self.load_vlm_model,
+                fn=self.load_vlm_model_with_btn,
                 inputs=[model_dropdown],
-                outputs=[model_status, context_info]
+                outputs=[model_status, context_info, mini_unload_btn]
             )
 
             unload_model_btn.click(
-                fn=self.unload_vlm_model,
-                outputs=[model_status, context_info]
+                fn=self.unload_vlm_model_with_btn,
+                outputs=[model_status, context_info, mini_unload_btn]
+            )
+
+            mini_unload_btn.click(
+                fn=self.unload_vlm_model_with_btn,
+                outputs=[model_status, context_info, mini_unload_btn]
             )
 
             preset_dropdown.change(
@@ -434,6 +448,29 @@ class PromptAnalyzerUI:
             self.current_metadata = None
             return "<small style='color: gray;'>--</small>", "画像の読み込みに失敗しました。もう一度ドロップしてください。", "", "{}"
 
+    def _get_unload_btn_update(self):
+        """ミニアンロードボタンの表示状態を取得"""
+        if self.current_vlm is not None:
+            return gr.update(
+                value="⏏ アンロード", variant="stop", interactive=True
+            )
+        else:
+            return gr.update(
+                value="モデル未ロード", variant="secondary", interactive=False
+            )
+
+    def load_vlm_model_with_btn(
+        self, model_path: str
+    ) -> Tuple[str, str, dict]:
+        """VLMモデルをロード（ミニボタン更新付き）"""
+        status, context = self.load_vlm_model(model_path)
+        return status, context, self._get_unload_btn_update()
+
+    def unload_vlm_model_with_btn(self) -> Tuple[str, str, dict]:
+        """VLMモデルをアンロード（ミニボタン更新付き）"""
+        status, context = self.unload_vlm_model()
+        return status, context, self._get_unload_btn_update()
+
     def _get_model_status(self) -> str:
         """現在のモデル状態を取得"""
         if self.current_vlm is None:
@@ -459,21 +496,21 @@ class PromptAnalyzerUI:
 
         # モデルが未ロードで、モデルが選択されている場合は自動ロード
         if self.current_vlm is None and self.selected_model_path:
-            yield "モデルをロード中...", "<small style='color: gray;'>モデルをロード中...</small>", "モデルをロード中..."
+            yield "モデルをロード中...", "<small style='color: gray;'>モデルをロード中...</small>", "モデルをロード中...", gr.update()
 
             # モデルをロード
             status, context = self.load_vlm_model(self.selected_model_path)
 
             if "✓" not in status:
-                yield f"エラー: モデルのロードに失敗しました\n{status}", "<small style='color: gray;'>--</small>", status
+                yield f"エラー: モデルのロードに失敗しました\n{status}", "<small style='color: gray;'>--</small>", status, self._get_unload_btn_update()
                 return
 
         if self.current_vlm is None:
-            yield "エラー: モデルを選択してロードしてください", "<small style='color: gray;'>--</small>", "モデル未選択"
+            yield "エラー: モデルを選択してロードしてください", "<small style='color: gray;'>--</small>", "モデル未選択", self._get_unload_btn_update()
             return
 
         if not self.current_image_path or self.current_metadata is None:
-            yield "エラー: 画像をアップロードしてください", self._get_context_info_simple(), self._get_model_status()
+            yield "エラー: 画像をアップロードしてください", self._get_context_info_simple(), self._get_model_status(), self._get_unload_btn_update()
             return
 
         prompt_text = self.current_metadata['prompt']
@@ -493,15 +530,15 @@ class PromptAnalyzerUI:
                 max_tokens=max_tokens_int
             ):
                 response += chunk
-                yield response, self._get_context_info_simple(), self._get_model_status()
+                yield response, self._get_context_info_simple(), self._get_model_status(), self._get_unload_btn_update()
 
             # 生成時間を表示
             elapsed_time = time.time() - start_time
             context_with_time = f"<small style='color: gray;'>生成完了 ({elapsed_time:.1f}秒)</small>"
-            yield response, context_with_time, self._get_model_status()
+            yield response, context_with_time, self._get_model_status(), self._get_unload_btn_update()
 
         except Exception as e:
-            yield f"エラー: {str(e)}", self._get_context_info_simple(), self._get_model_status()
+            yield f"エラー: {str(e)}", self._get_context_info_simple(), self._get_model_status(), self._get_unload_btn_update()
 
     def _get_context_info_simple(self) -> str:
         """シンプルなコンテキスト情報を取得"""
