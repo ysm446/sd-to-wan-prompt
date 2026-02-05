@@ -70,8 +70,7 @@ class PromptAnalyzerUI:
         initial_top_p = cached_settings.get('top_p', self.config['inference']['top_p'])
 
         with gr.Blocks(title="WAN Prompt Generator", css=custom_css) as interface:
-            gr.Markdown("# WAN Prompt Generator")
-            gr.Markdown("SD画像からWAN 2.2用の動画プロンプトを生成します")
+            gr.Markdown("# WAN Prompt Generator <small style='font-size:0.4em; color:gray;'>SD画像からWAN 2.2用の動画プロンプトを生成</small>")
 
             with gr.Tabs():
                 # タブ1: プロンプト生成
