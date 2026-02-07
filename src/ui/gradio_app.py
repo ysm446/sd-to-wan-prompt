@@ -33,6 +33,9 @@ class PromptAnalyzerUI:
         config_loader = ConfigLoader()
         self.model_presets = config_loader.load_model_presets()
 
+        # デバイス設定をキャッシュから読み込み
+        self.device_settings = self.load_device_settings()
+
     def create_interface(self) -> gr.Blocks:
         """
         Gradio UIを構築
@@ -186,6 +189,31 @@ class PromptAnalyzerUI:
                                     value=None,
                                     interactive=True
                                 )
+
+                                # デバイス設定
+                                with gr.Row():
+                                    device_dropdown = gr.Dropdown(
+                                        label="計算デバイス",
+                                        choices=self._get_available_devices(),
+                                        value=self.device_settings['device'],
+                                        interactive=True,
+                                        scale=1,
+                                        info="モデルの計算に使用するデバイス"
+                                    )
+                                    dtype_dropdown = gr.Dropdown(
+                                        label="データ型",
+                                        choices=[
+                                            ("BFloat16（推奨・高速）", "bfloat16"),
+                                            ("Float16（GPU高速）", "float16"),
+                                            ("Float32（高精度・低速）", "float32")
+                                        ],
+                                        value=self.device_settings['dtype'],
+                                        interactive=True,
+                                        scale=1
+                                    )
+
+                                device_info = gr.Markdown(value=self._get_device_info())
+
                                 with gr.Row():
                                     load_model_btn = gr.Button("モデルをロード")
                                     unload_model_btn = gr.Button("モデルをクリア")
@@ -359,6 +387,19 @@ class PromptAnalyzerUI:
             unload_model_btn.click(
                 fn=self.unload_vlm_model_with_btn,
                 outputs=[model_status, context_info, mini_unload_btn]
+            )
+
+            # デバイス変更時のイベント
+            device_dropdown.change(
+                fn=self.on_device_change,
+                inputs=[device_dropdown, dtype_dropdown],
+                outputs=[model_status, context_info, mini_unload_btn, device_info]
+            )
+
+            dtype_dropdown.change(
+                fn=self.on_device_change,
+                inputs=[device_dropdown, dtype_dropdown],
+                outputs=[model_status, context_info, mini_unload_btn, device_info]
             )
 
             mini_unload_btn.click(
@@ -549,6 +590,37 @@ class PromptAnalyzerUI:
             return f"<small style='color: gray;'>📊 コンテキスト長: {context_length:,}</small>"
         return "<small style='color: gray;'>--</small>"
 
+    def _get_device_info(self) -> str:
+        """現在のデバイス情報を取得"""
+        import torch
+
+        info_lines = []
+
+        if torch.cuda.is_available():
+            gpu_name = torch.cuda.get_device_name(0)
+            gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            info_lines.append(f"✓ **CUDA利用可能**")
+            info_lines.append(f"  - GPU: {gpu_name}")
+            info_lines.append(f"  - VRAM: {gpu_memory:.1f} GB")
+        else:
+            info_lines.append("⚠ **CUDA利用不可** - CPUモードのみ")
+
+        return "<small>" + "<br>".join(info_lines) + "</small>"
+
+    def _get_available_devices(self) -> List[Tuple[str, str]]:
+        """利用可能なデバイス選択肢を取得"""
+        import torch
+
+        choices = [
+            ("自動選択（GPU優先）", "auto"),
+            ("CPU", "cpu")
+        ]
+
+        if torch.cuda.is_available():
+            choices.append(("CUDA（GPU）", "cuda"))
+
+        return choices
+
     def refresh_local_models(self) -> Tuple:
         """ローカルモデル一覧を更新"""
         models = self.model_manager.list_local_models()
@@ -585,11 +657,14 @@ class PromptAnalyzerUI:
             if self.current_vlm is not None:
                 self.current_vlm.unload_model()
 
+            # キャッシュからデバイス設定を読み込み
+            device_settings = self.load_device_settings()
+
             # モデルをロード
             self.current_vlm = VLMInterface(
                 model_path=model_path,
-                device=self.config['model']['device'],
-                dtype=self.config['model']['dtype']
+                device=device_settings['device'],
+                dtype=device_settings['dtype']
             )
 
             # コンテキスト長を取得
@@ -620,6 +695,76 @@ class PromptAnalyzerUI:
             return "✓ モデルをアンロードしました（VRAMを解放）", "<small style='color: gray;'>--</small>"
         except Exception as e:
             return f"✗ アンロード失敗: {str(e)}", "<small style='color: gray;'>--</small>"
+
+    def on_device_change(
+        self,
+        device: str,
+        dtype: str
+    ) -> Tuple[str, str, dict, str]:
+        """
+        デバイス/データ型変更時の処理
+
+        処理フロー:
+        1. 設定を settings_cache.json に保存
+        2. モデルがロード済みの場合:
+           - 既存モデルをアンロード
+           - 新しいデバイス設定でモデルを再ロード
+           - UIを更新
+        3. モデル未ロードの場合:
+           - 設定のみ保存（次回ロード時に反映）
+
+        Args:
+            device: 新しいデバイス設定
+            dtype: 新しいデータ型設定
+
+        Returns:
+            (model_status, context_info, mini_unload_btn_update, device_info)
+        """
+        # 設定を保存
+        self.save_device_settings(device, dtype)
+
+        # デバイス情報を更新
+        device_info_text = self._get_device_info()
+
+        # モデルがロード済みの場合は再ロード
+        if self.current_vlm is not None and self.selected_model_path:
+            try:
+                # アンロード
+                self.current_vlm.unload_model()
+                self.current_vlm = None
+
+                # 新しいデバイスでロード
+                self.current_vlm = VLMInterface(
+                    model_path=self.selected_model_path,
+                    device=device,
+                    dtype=dtype
+                )
+
+                context_length = self.current_vlm.get_context_length()
+                context_info = f"<small style='color: gray;'>📊 CONTEXT: 0 / {context_length:,}</small>"
+
+                device_name = {"auto": "自動選択", "cpu": "CPU", "cuda": "CUDA（GPU）"}.get(device, device)
+                return (
+                    f"✓ デバイスを変更しました: {device_name}\nモデル: {Path(self.selected_model_path).name}",
+                    context_info,
+                    self._get_unload_btn_update(),
+                    device_info_text
+                )
+            except Exception as e:
+                return (
+                    f"✗ デバイス変更エラー: {str(e)}",
+                    "<small style='color: gray;'>--</small>",
+                    self._get_unload_btn_update(),
+                    device_info_text
+                )
+
+        # モデル未ロード時
+        return (
+            "デバイス設定を保存しました（次回ロード時に反映）",
+            "<small style='color: gray;'>--</small>",
+            self._get_unload_btn_update(),
+            device_info_text
+        )
 
     def update_preset_info(self, preset_name: str) -> Tuple:
         """プリセット情報を表示"""
@@ -794,6 +939,47 @@ class PromptAnalyzerUI:
         except Exception as e:
             print(f"警告: 保存先フォルダの読み込みに失敗しました: {e}")
         return ""
+
+    def save_device_settings(self, device: str, dtype: str):
+        """デバイス設定を settings_cache.json に保存"""
+        try:
+            # 既存データを読み込み
+            data = {}
+            if self.settings_cache_file.exists():
+                try:
+                    data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
+                except:
+                    pass
+
+            # デバイス設定を更新
+            data["device_settings"] = {
+                "device": device,
+                "dtype": dtype
+            }
+
+            self.settings_cache_file.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding='utf-8'
+            )
+        except Exception as e:
+            print(f"警告: デバイス設定の保存に失敗しました: {e}")
+
+    def load_device_settings(self) -> Dict[str, str]:
+        """デバイス設定を settings_cache.json から読み込み"""
+        # デフォルト値（settings.yaml から取得）
+        default_settings = {
+            "device": self.config.get('model', {}).get('device', 'auto'),
+            "dtype": self.config.get('model', {}).get('dtype', 'bfloat16')
+        }
+
+        try:
+            if self.settings_cache_file.exists():
+                data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
+                return data.get("device_settings", default_settings)
+        except Exception as e:
+            print(f"警告: デバイス設定の読み込みに失敗しました: {e}")
+
+        return default_settings
 
     def save_prompt_to_file(
         self,
