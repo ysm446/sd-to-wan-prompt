@@ -140,6 +140,8 @@ class PromptAnalyzerUI:
                                 lines=2
                             )
 
+                            generate_btn = gr.Button("WANプロンプト生成", variant="primary", size="lg")
+
                             # 出力言語・スタイルプリセット選択（横一列）
                             cached_settings = self.load_generation_settings()
                             with gr.Row():
@@ -178,8 +180,6 @@ class PromptAnalyzerUI:
                                 value=cached_sections,
                                 interactive=True
                             )
-
-                            generate_btn = gr.Button("WANプロンプト生成", variant="primary", size="lg")
 
                             # モデル選択
                             with gr.Accordion("モデル設定", open=False):
