@@ -63,5 +63,9 @@ desktop.ini
 # アプリケーションキャッシュ
 settings_cache.json
 
+# テスト・デバッグ用スクリプト
+test_*.py
+check_*.py
+
 # Windows特殊ファイル（誤作成防止）
 nul
