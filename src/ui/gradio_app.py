@@ -92,7 +92,7 @@ class PromptAnalyzerUI:
                             )
 
                             # プロンプト情報表示
-                            with gr.Accordion("元のSD情報", open=True):
+                            with gr.Accordion("メタデータ情報", open=True):
                                 prompt_display = gr.Textbox(
                                     label="Prompt",
                                     lines=3,
