@@ -223,6 +223,15 @@ class PromptAnalyzerUI:
                                     interactive=False
                                 )
 
+                                # 自動アンロード設定
+                                cached_auto_unload = self.load_auto_unload_setting()
+                                auto_unload_checkbox = gr.Checkbox(
+                                    label="プロンプト生成後に自動アンロード",
+                                    value=cached_auto_unload,
+                                    info="WANプロンプト生成完了後、自動的にモデルをアンロードしてVRAMを解放します",
+                                    interactive=True
+                                )
+
                             # テキストファイル保存
                             cached_save_dir = self.load_save_directory()
                             with gr.Accordion("テキストファイル保存", open=False):
@@ -324,8 +333,15 @@ class PromptAnalyzerUI:
             # WANプロンプト生成
             generate_btn.click(
                 fn=self.generate_wan_prompt,
-                inputs=[additional_input, style_dropdown, language_dropdown, output_sections, temperature_slider, max_tokens_slider],
+                inputs=[additional_input, style_dropdown, language_dropdown, output_sections, temperature_slider, max_tokens_slider, auto_unload_checkbox],
                 outputs=[output_textbox, context_info, model_status, mini_unload_btn]
+            )
+
+            # 自動アンロード設定の変更時にキャッシュを保存
+            auto_unload_checkbox.change(
+                fn=self.save_auto_unload_setting,
+                inputs=[auto_unload_checkbox],
+                outputs=[]
             )
 
             # テキストファイル保存
@@ -526,7 +542,8 @@ class PromptAnalyzerUI:
         output_language: str,
         output_sections: List[str],
         temperature: float,
-        max_tokens: int
+        max_tokens: int,
+        auto_unload: bool
     ):
         """WAN 2.2プロンプトを生成（ストリーミング対応）"""
         max_tokens_int = int(max_tokens)
@@ -576,6 +593,11 @@ class PromptAnalyzerUI:
             elapsed_time = time.time() - start_time
             context_with_time = f"<small style='color: gray;'>生成完了 ({elapsed_time:.1f}秒)</small>"
             yield response, context_with_time, self._get_model_status(), self._get_unload_btn_update()
+
+            # 自動アンロードが有効な場合はモデルをアンロード
+            if auto_unload:
+                self.unload_vlm_model()
+                yield response, "<small style='color: gray;'>✓ モデルを自動アンロードしました</small>", "✓ モデルをアンロードしました（VRAMを解放）", self._get_unload_btn_update()
 
         except Exception as e:
             yield f"エラー: {str(e)}", self._get_context_info_simple(), self._get_model_status(), self._get_unload_btn_update()
@@ -980,6 +1002,35 @@ class PromptAnalyzerUI:
             print(f"警告: デバイス設定の読み込みに失敗しました: {e}")
 
         return default_settings
+
+    def save_auto_unload_setting(self, auto_unload: bool):
+        """自動アンロード設定をキャッシュに保存"""
+        try:
+            data = {}
+            if self.settings_cache_file.exists():
+                try:
+                    data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
+                except:
+                    pass
+
+            data["auto_unload"] = auto_unload
+
+            self.settings_cache_file.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding='utf-8'
+            )
+        except Exception as e:
+            print(f"警告: 自動アンロード設定の保存に失敗しました: {e}")
+
+    def load_auto_unload_setting(self) -> bool:
+        """自動アンロード設定をキャッシュから読み込み"""
+        try:
+            if self.settings_cache_file.exists():
+                data = json.loads(self.settings_cache_file.read_text(encoding='utf-8'))
+                return data.get("auto_unload", False)
+        except Exception as e:
+            print(f"警告: 自動アンロード設定の読み込みに失敗しました: {e}")
+        return False
 
     def save_prompt_to_file(
         self,
