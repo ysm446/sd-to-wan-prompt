@@ -269,3 +269,30 @@ MIT License
 3. モデルファイルが正しくダウンロードされているか
 
 詳細なログを確認する場合は、ターミナルの出力を確認してください。
+
+## Electron mode (new)
+
+A desktop wrapper now exists under `desktop/electron`, backed by `FastAPI`.
+
+### Start backend only
+
+```bash
+python app.py --mode api --host 127.0.0.1 --port 7861
+```
+
+### Start Electron app
+
+```bash
+cd desktop/electron
+npm install
+npm start
+```
+
+Environment variables:
+- `PYTHON_EXECUTABLE`: path to Python interpreter to run `app.py`
+- `WAN_API_HOST`: backend host (default `127.0.0.1`)
+- `WAN_API_PORT`: backend port (default `7861`)
+
+## Tauri note
+
+If you prefer Tauri instead of Electron, reuse the same backend (`app.py --mode api`) and replace only the desktop frontend shell.

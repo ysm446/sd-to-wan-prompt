@@ -37,7 +37,7 @@ class VLMInterface:
         - device_map="auto" で自動GPU配置
         - torch.bfloat16 または torch.float16
         """
-        print(f"モデルを読み込み中: {model_path}")
+        print(f"Loading model: {model_path}")
 
         # データ型の設定
         torch_dtype = self._get_torch_dtype()
@@ -46,12 +46,12 @@ class VLMInterface:
             import traceback
 
             # プロセッサー（トークナイザー + 画像プロセッサー）をロード
-            print(f"  プロセッサーを読み込み中...")
+            print("  Loading processor...")
             self.processor = AutoProcessor.from_pretrained(
                 model_path,
                 trust_remote_code=True
             )
-            print(f"  ✓ プロセッサーの読み込み完了")
+            print("  Processor loaded.")
 
             # モデルをロード
             # デバイスマップの設定（CPUモード時は明示的にCPUを指定）
@@ -63,9 +63,9 @@ class VLMInterface:
             # config.jsonからアーキテクチャを判定して適切なモデルクラスを選択
             model_class = self._get_model_class(model_path)
 
-            print(f"  モデルクラス: {model_class.__name__}")
-            print(f"  デバイスマップ: {device_map}")
-            print(f"  モデルを読み込み中...")
+            print(f"  Model class: {model_class.__name__}")
+            print(f"  Device map: {device_map}")
+            print("  Loading model weights...")
             self.model = model_class.from_pretrained(
                 model_path,
                 torch_dtype=torch_dtype,
@@ -73,29 +73,29 @@ class VLMInterface:
                 trust_remote_code=True
             )
 
-            print(f"✓ モデルの読み込みが完了しました")
-            print(f"  デバイスマップ: auto")
-            print(f"  データ型: {self.dtype}")
+            print("Model load completed.")
+            print("  Device map: auto")
+            print(f"  Dtype: {self.dtype}")
 
             # デバイス情報を表示
             if hasattr(self.model, 'device'):
-                print(f"  モデルデバイス: {self.model.device}")
+                print(f"  Model device: {self.model.device}")
             elif hasattr(self.model, 'hf_device_map'):
-                print(f"  デバイスマップ: {self.model.hf_device_map}")
+                print(f"  Device map detail: {self.model.hf_device_map}")
 
             # CUDA使用状況
             if torch.cuda.is_available():
-                print(f"  ✓ CUDA利用可能")
+                print("  CUDA available")
                 print(f"  GPU: {torch.cuda.get_device_name(0)}")
-                print(f"  GPU メモリ: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+                print(f"  GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
             else:
-                print(f"  ⚠ CUDA利用不可 - CPUで動作中（非常に遅くなります）")
+                print("  CUDA not available; running on CPU (slow).")
 
         except Exception as e:
             import traceback
-            print(f"✗ モデルの読み込みに失敗しました")
-            print(f"  エラー: {e}")
-            print(f"\n詳細なエラートレース:")
+            print("Model load failed.")
+            print(f"  Error: {e}")
+            print("\nDetailed traceback:")
             traceback.print_exc()
             raise
 
@@ -121,7 +121,7 @@ class VLMInterface:
             VLMの回答テキスト
         """
         if self.model is None or self.processor is None:
-            raise RuntimeError("モデルがロードされていません")
+            raise RuntimeError("Model is not loaded")
 
         # 画像を読み込み
         image = Image.open(image_path).convert('RGB')
@@ -202,7 +202,7 @@ class VLMInterface:
             生成されたテキストの断片
         """
         if self.model is None or self.processor is None:
-            raise RuntimeError("モデルがロードされていません")
+            raise RuntimeError("Model is not loaded")
 
         # 画像を読み込み
         image = Image.open(image_path).convert('RGB')
@@ -297,7 +297,7 @@ class VLMInterface:
         if output_sections is None:
             output_sections = ["scene", "action", "camera", "style", "prompt"]
         if self.model is None or self.processor is None:
-            raise RuntimeError("モデルがロードされていません")
+            raise RuntimeError("Model is not loaded")
 
         # 画像を読み込み
         image = Image.open(image_path).convert('RGB')
@@ -459,7 +459,7 @@ Your task is to analyze the given image and its Stable Diffusion prompt, then ge
             VLMの回答
         """
         if self.model is None or self.processor is None:
-            raise RuntimeError("モデルがロードされていません")
+            raise RuntimeError("Model is not loaded")
 
         # メッセージを構築
         conversation = [
@@ -555,7 +555,7 @@ Your task is to analyze the given image and its Stable Diffusion prompt, then ge
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        print("モデルをアンロードしました")
+        print("Model unloaded.")
 
     def _get_model_class(self, model_path: str):
         """
@@ -575,7 +575,7 @@ Your task is to analyze the given image and its Stable Diffusion prompt, then ge
                     config = json.load(f)
 
                 architecture = config.get('architectures', [None])[0]
-                print(f"  検出されたアーキテクチャ: {architecture}")
+                print(f"  Detected architecture: {architecture}")
 
                 # アーキテクチャに基づいてモデルクラスを選択
                 if architecture == "Qwen2_5_VLForConditionalGeneration":
@@ -583,7 +583,7 @@ Your task is to analyze the given image and its Stable Diffusion prompt, then ge
                         from transformers import Qwen2_5_VLForConditionalGeneration
                         return Qwen2_5_VLForConditionalGeneration
                     except ImportError:
-                        print(f"  警告: Qwen2_5_VLForConditionalGenerationが見つかりません。AutoModelForVision2Seqを使用します。")
+                        print("  Warning: Qwen2_5_VLForConditionalGeneration unavailable. Falling back to AutoModelForVision2Seq.")
                         from transformers import AutoModelForVision2Seq
                         return AutoModelForVision2Seq
 
@@ -592,7 +592,7 @@ Your task is to analyze the given image and its Stable Diffusion prompt, then ge
                         from transformers import Qwen2VLForConditionalGeneration
                         return Qwen2VLForConditionalGeneration
                     except ImportError:
-                        print(f"  警告: Qwen2VLForConditionalGenerationが見つかりません。AutoModelForVision2Seqを使用します。")
+                        print("  Warning: Qwen2VLForConditionalGeneration unavailable. Falling back to AutoModelForVision2Seq.")
                         from transformers import AutoModelForVision2Seq
                         return AutoModelForVision2Seq
 
@@ -601,23 +601,23 @@ Your task is to analyze the given image and its Stable Diffusion prompt, then ge
                         from transformers import Qwen3VLForConditionalGeneration
                         return Qwen3VLForConditionalGeneration
                     except ImportError:
-                        print(f"  警告: Qwen3VLForConditionalGenerationが見つかりません。AutoModelForVision2Seqを使用します。")
+                        print("  Warning: Qwen3VLForConditionalGeneration unavailable. Falling back to AutoModelForVision2Seq.")
                         from transformers import AutoModelForVision2Seq
                         return AutoModelForVision2Seq
 
                 else:
                     # 未知のアーキテクチャでもgenerate()メソッドを持つモデルを使用
-                    print(f"  未知のアーキテクチャです。AutoModelForVision2Seqを使用します。")
+                    print("  Unknown architecture. Using AutoModelForVision2Seq.")
                     from transformers import AutoModelForVision2Seq
                     return AutoModelForVision2Seq
 
             except Exception as e:
-                print(f"  警告: config.jsonの読み込みに失敗しました: {e}")
-                print(f"  AutoModelForVision2Seqを使用します。")
+                print(f"  Warning: failed to read config.json: {e}")
+                print("  Using AutoModelForVision2Seq.")
                 from transformers import AutoModelForVision2Seq
                 return AutoModelForVision2Seq
         else:
-            print(f"  警告: config.jsonが見つかりません。AutoModelForVision2Seqを使用します。")
+            print("  Warning: config.json not found. Using AutoModelForVision2Seq.")
             from transformers import AutoModelForVision2Seq
             return AutoModelForVision2Seq
 

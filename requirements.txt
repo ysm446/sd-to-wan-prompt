@@ -1,4 +1,4 @@
-# Core dependencies
+﻿# Core dependencies
 gradio>=4.0.0
 transformers>=4.40.0
 torch>=2.0.0
@@ -10,3 +10,8 @@ accelerate>=0.25.0
 # Qwen2-VL specific
 qwen-vl-utils
 torchvision>=0.15.0
+
+# API mode
+fastapi>=0.115.0
+uvicorn>=0.30.0
+

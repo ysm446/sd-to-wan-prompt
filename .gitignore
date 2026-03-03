@@ -1,4 +1,4 @@
-# IDE設定
+﻿# IDE險ｭ螳・
 .vscode/
 .idea/
 *.code-workspace
@@ -25,17 +25,17 @@ wheels/
 .installed.cfg
 *.egg
 
-# 仮想環境
+# 莉ｮ諠ｳ迺ｰ蠅・
 venv/
 env/
 ENV/
 .venv
 
-# モデルファイル（大容量のため除外）
+# 繝｢繝・Ν繝輔ぃ繧､繝ｫ・亥､ｧ螳ｹ驥上・縺溘ａ髯､螟厄ｼ・
 models/*/
 !models/.gitkeep
 
-# データファイル
+# 繝・・繧ｿ繝輔ぃ繧､繝ｫ
 data/sd_outputs/
 data/database/
 data/downloads/
@@ -44,28 +44,31 @@ data/downloads/
 *.jpeg
 *.webp
 
-# ログファイル
+# 繝ｭ繧ｰ繝輔ぃ繧､繝ｫ
 *.log
 logs/
 
-# OS固有
+# OS蝗ｺ譛・
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# その他
+# 縺昴・莉・
 .env
 .cache/
 *.swp
 *.swo
 *~
 
-# アプリケーションキャッシュ
+# 繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ繧ｭ繝｣繝・す繝･
 settings_cache.json
 
-# テスト・デバッグ用スクリプト
+# 繝・せ繝医・繝・ヰ繝・げ逕ｨ繧ｹ繧ｯ繝ｪ繝励ヨ
 test_*.py
 check_*.py
 
-# Windows特殊ファイル（誤作成防止）
+# Windows迚ｹ谿翫ヵ繧｡繧､繝ｫ・郁ｪ､菴懈・髦ｲ豁｢・・
 nul
+desktop/electron/node_modules/
+desktop/electron/dist/
+

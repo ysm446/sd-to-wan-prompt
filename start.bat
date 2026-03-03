@@ -1,10 +1,17 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
-REM SD Prompt Analyzer Startup Script
+setlocal enabledelayedexpansion
+
+set "MODE=%~1"
+if "%MODE%"=="" set "MODE=gradio"
+
+set "API_HOST=127.0.0.1"
+set "API_PORT=7861"
 
 echo ========================================
-echo   SD Prompt Analyzer
+echo   WAN Prompt Generator Launcher
 echo ========================================
+echo Mode: %MODE%
 echo.
 
 REM Initialize Conda
@@ -17,15 +24,14 @@ if exist "%USERPROFILE%\miniconda3\Scripts\activate.bat" (
 ) else (
     echo [ERROR] Conda not found. Please check your Conda installation.
     echo.
-    echo Please run this command in Conda prompt:
+    echo Use a Conda prompt and run:
     echo   conda activate main
-    echo   python app.py
+    echo   python app.py --mode gradio
     echo.
     pause
     exit /b 1
 )
 
-REM Activate Conda environment
 echo Activating conda environment: main
 call conda activate main
 
@@ -46,20 +52,72 @@ if %ERRORLEVEL% NEQ 0 (
 echo Environment activated successfully
 echo.
 
-REM Start application
-echo Starting SD Prompt Analyzer...
-echo Browser will open automatically
-echo.
+if /I "%MODE%"=="gradio" goto RUN_GRADIO
+if /I "%MODE%"=="api" goto RUN_API
+if /I "%MODE%"=="electron" goto RUN_ELECTRON
+if /I "%MODE%"=="help" goto SHOW_HELP
+
+echo [ERROR] Unknown mode: %MODE%
+goto SHOW_HELP
+
+:RUN_GRADIO
+echo Starting Gradio UI...
 echo Press Ctrl+C to stop
-echo ========================================
 echo.
+python app.py --mode gradio
+goto END
 
-python app.py
+:RUN_API
+echo Starting API server on %API_HOST%:%API_PORT% ...
+echo Press Ctrl+C to stop
+echo.
+python app.py --mode api --host %API_HOST% --port %API_PORT%
+goto END
 
+:RUN_ELECTRON
+echo Starting Electron desktop app...
+set "WAN_API_HOST=%API_HOST%"
+set "WAN_API_PORT=%API_PORT%"
+set "PYTHON_EXECUTABLE=python"
+
+if not exist "desktop\electron\package.json" (
+    echo [ERROR] desktop\electron\package.json not found.
+    echo Run this from the project root.
+    goto END
+)
+
+pushd desktop\electron
+if not exist "node_modules" (
+    echo Installing Electron dependencies...
+    call npm install
+    if %ERRORLEVEL% NEQ 0 (
+        echo [ERROR] npm install failed.
+        popd
+        goto END
+    )
+)
+
+call npm start
+popd
+goto END
+
+:SHOW_HELP
+echo.
+echo Usage:
+echo   start.bat [mode]
+echo.
+echo Modes:
+echo   gradio   Start legacy Gradio UI (default)
+echo   api      Start FastAPI backend only
+echo   electron Start Electron desktop app
+echo   help     Show this help
+
+:END
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo ========================================
-    echo [ERROR] Failed to start application
+    echo [ERROR] Process ended with errors
     echo ========================================
     pause
 )
+endlocal
