@@ -79,6 +79,7 @@ echo Starting Electron desktop app...
 set "WAN_API_HOST=%API_HOST%"
 set "WAN_API_PORT=%API_PORT%"
 set "PYTHON_EXECUTABLE=python"
+set "ELECTRON_RUN_AS_NODE="
 
 if not exist "desktop\electron\package.json" (
     echo [ERROR] desktop\electron\package.json not found.
