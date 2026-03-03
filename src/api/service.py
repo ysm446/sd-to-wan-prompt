@@ -255,7 +255,27 @@ class PromptService:
         if not path.exists():
             raise FileNotFoundError(f"JSON not found: {normalized}")
 
-        data = json.loads(path.read_text(encoding="utf-8"))
+        # Support JSON files saved by different tools/encodings (UTF-8 BOM, UTF-16, etc.).
+        raw_bytes = path.read_bytes()
+        decode_errors: List[str] = []
+        text = None
+        for enc in ("utf-8-sig", "utf-8", "utf-16", "utf-16-le", "utf-16-be"):
+            try:
+                text = raw_bytes.decode(enc)
+                break
+            except Exception as exc:
+                decode_errors.append(f"{enc}: {exc}")
+        if text is None:
+            raise ValueError(
+                "Failed to decode JSON file. Tried encodings: "
+                + "; ".join(decode_errors)
+            )
+
+        try:
+            data = json.loads(text)
+        except Exception as exc:
+            raise ValueError(f"Invalid JSON format: {exc}") from exc
+
         if not isinstance(data, dict):
             raise ValueError("Invalid JSON format: object expected")
 

@@ -249,10 +249,10 @@ async function parseImage() {
 
 function applyLoadedSession(session) {
   if (!session) return;
-  const displayPath = session.image_url || session.image_path || '';
+  const displayPath = session.image_path || session.image_url || '';
   if (displayPath) {
     byId('imagePathInput').value = displayPath;
-    updateImagePreview(session.image_path || displayPath);
+    updateImagePreview(displayPath);
   }
   if (session.metadata) {
     renderMetadataPretty(session.metadata);
@@ -304,12 +304,18 @@ function bindDropZone() {
 
     if (isJsonPath(droppedPath)) {
       setStatus('JSON dropped. Loading session...');
-      const session = await window.wanApi.loadSessionJson(droppedPath);
-      applyLoadedSession(session);
-      setStatus('Session JSON loaded.', {
-        json_path: session.json_path,
-        image_filename: session.image_filename,
-      });
+      try {
+        const session = await window.wanApi.loadSessionJson(droppedPath);
+        applyLoadedSession(session);
+        setStatus('Session JSON loaded.', {
+          json_path: session.json_path,
+          image_filename: session.image_filename,
+          image_path: session.image_path || '(not found)',
+        });
+      } catch (err) {
+        const detail = err && err.stack ? err.stack : null;
+        setStatus(`Failed to load session JSON: ${err.message}`, detail);
+      }
       return;
     }
 

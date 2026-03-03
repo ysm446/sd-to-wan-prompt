@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 set "MODE=%~1"
-if "%MODE%"=="" set "MODE=gradio"
+if "%MODE%"=="" set "MODE=electron"
 
 set "API_HOST=127.0.0.1"
 set "API_PORT=7861"
