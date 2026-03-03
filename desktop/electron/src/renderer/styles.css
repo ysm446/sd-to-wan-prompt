@@ -36,6 +36,10 @@ body {
   color: var(--text-dim);
 }
 
+.health-inline {
+  display: none;
+}
+
 .tab-nav {
   display: flex;
   gap: 8px;
@@ -111,6 +115,19 @@ body {
 
 .status-panel {
   margin-top: 14px;
+}
+
+.status-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#healthStatus {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12px;
 }
 
 h2 {

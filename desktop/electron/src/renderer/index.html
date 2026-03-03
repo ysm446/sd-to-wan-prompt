@@ -9,8 +9,7 @@
   <body>
     <main class="app-shell">
       <header class="app-header">
-        <h1>WAN Prompt Desktop</h1>
-        <p id="health">Backend: checking...</p>
+        <p id="health" class="health-inline">Backend: checking...</p>
       </header>
 
       <nav class="tab-nav" aria-label="Main Tabs">
@@ -123,7 +122,10 @@
       </section>
 
       <section class="panel status-panel">
-        <h2>Status</h2>
+        <div class="status-head">
+          <h2>Status</h2>
+          <p id="healthStatus">Backend: checking...</p>
+        </div>
         <pre id="statusOut">-</pre>
       </section>
     </main>

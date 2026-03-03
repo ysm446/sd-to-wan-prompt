@@ -1,6 +1,7 @@
 ﻿const byId = (id) => document.getElementById(id);
 
 const health = byId('health');
+const healthStatus = byId('healthStatus');
 const modelSelect = byId('modelSelect');
 const metadataOut = byId('metadataOut');
 const outputOut = byId('outputOut');
@@ -168,10 +169,14 @@ function applySettings(settings) {
 async function refreshHealth() {
   try {
     const res = await window.wanApi.health();
-    health.textContent = `Backend: ${res.status} (${res.version})`;
+    const text = `Backend: ${res.status} (${res.version})`;
+    if (health) health.textContent = text;
+    if (healthStatus) healthStatus.textContent = text;
     return true;
   } catch (err) {
-    health.textContent = `Backend: down (${err.message})`;
+    const text = `Backend: down (${err.message})`;
+    if (health) health.textContent = text;
+    if (healthStatus) healthStatus.textContent = text;
     return false;
   }
 }
@@ -244,9 +249,10 @@ async function parseImage() {
 
 function applyLoadedSession(session) {
   if (!session) return;
-  if (session.image_path) {
-    byId('imagePathInput').value = session.image_path;
-    updateImagePreview(session.image_path);
+  const displayPath = session.image_url || session.image_path || '';
+  if (displayPath) {
+    byId('imagePathInput').value = displayPath;
+    updateImagePreview(session.image_path || displayPath);
   }
   if (session.metadata) {
     renderMetadataPretty(session.metadata);
@@ -496,7 +502,8 @@ async function waitForBackend(maxRetry = 20, intervalMs = 500) {
 
 (async function init() {
   if (!window.wanApi) {
-    health.textContent = 'Backend: bridge unavailable';
+    if (health) health.textContent = 'Backend: bridge unavailable';
+    if (healthStatus) healthStatus.textContent = 'Backend: bridge unavailable';
     setStatus('Error: Electron preload bridge (window.wanApi) is not available.');
     return;
   }

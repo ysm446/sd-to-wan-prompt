@@ -267,14 +267,21 @@ class PromptService:
         image_filename = (data.get("image_filename") or "").strip()
         resolved_image_path = ""
 
-        if image_path:
-            candidate = Path(self._normalize_image_path(image_path))
-            if candidate.exists():
-                resolved_image_path = str(candidate)
-        elif image_filename:
+        # Prefer an image next to the JSON file first (portable when files are moved together).
+        if image_filename:
             candidate = path.parent / image_filename
             if candidate.exists():
-                resolved_image_path = str(candidate)
+                resolved_image_path = str(candidate.resolve())
+
+        # Fallback to stored absolute/relative path from JSON.
+        if not resolved_image_path and image_path:
+            candidate = Path(self._normalize_image_path(image_path))
+            if candidate.exists():
+                resolved_image_path = str(candidate.resolve())
+
+        image_url = ""
+        if resolved_image_path:
+            image_url = Path(resolved_image_path).as_uri()
 
         with self.lock:
             self.current_metadata = metadata
@@ -283,6 +290,7 @@ class PromptService:
         return {
             "image_filename": image_filename or (Path(resolved_image_path).name if resolved_image_path else ""),
             "image_path": resolved_image_path,
+            "image_url": image_url,
             "metadata": metadata,
             "prompt": (data.get("prompt") or "").strip(),
             "additional_instruction": (data.get("additional_instruction") or "").strip(),
