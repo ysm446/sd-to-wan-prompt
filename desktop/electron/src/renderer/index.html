@@ -20,34 +20,46 @@
       </nav>
 
       <section class="tab-panel active" id="tab-prompt">
-        <div class="panel-grid">
-          <div class="panel">
-            <h2>Image</h2>
-            <input id="imagePathInput" type="text" placeholder="D:\\images\\input.png" />
-            <button id="parseImageBtn">Parse Image Metadata</button>
-
-            <h2>Generation</h2>
-            <label>Additional Instruction</label>
-            <textarea id="instructionInput" rows="3"></textarea>
-
-            <button id="generateBtn" class="primary">Generate WAN Prompt</button>
-            <button id="savePromptBtn">Save Prompt Text (same folder as image)</button>
-
-            <h2>Generated Prompt</h2>
-            <textarea id="outputOut" rows="18"></textarea>
-          </div>
-
-          <div class="panel">
+        <div class="prompt-grid">
+          <div class="panel area-preview">
             <h2>Image Preview</h2>
             <div id="dropZone" class="preview-wrap drop-zone">
               <div id="dropHint" class="drop-hint">Drop image file here</div>
               <img id="imagePreview" alt="Dropped image preview" />
             </div>
+          </div>
+
+          <div class="panel area-image">
+            <h2>Image</h2>
+            <input id="imagePathInput" type="text" placeholder="D:\\images\\input.png" />
+            <button id="parseImageBtn">Parse Image Metadata</button>
 
             <details id="metadataDetails">
               <summary>Parsed Metadata</summary>
               <pre id="metadataOut">-</pre>
             </details>
+          </div>
+
+          <div class="panel area-output">
+            <h2>Generated Prompt</h2>
+            <textarea id="outputOut" rows="18"></textarea>
+          </div>
+
+          <div class="panel area-generation">
+            <h2>Generation</h2>
+            <label>Additional Instruction</label>
+            <textarea id="instructionInput" rows="4"></textarea>
+            <fieldset class="section-box">
+              <legend>Output Sections</legend>
+              <label class="inline"><input type="checkbox" class="section-check" value="scene" checked /> Scene</label>
+              <label class="inline"><input type="checkbox" class="section-check" value="action" checked /> Action</label>
+              <label class="inline"><input type="checkbox" class="section-check" value="camera" checked /> Camera</label>
+              <label class="inline"><input type="checkbox" class="section-check" value="style" checked /> Style</label>
+              <label class="inline"><input type="checkbox" class="section-check" value="prompt" checked /> Final Prompt</label>
+            </fieldset>
+
+            <button id="generateBtn" class="primary">Generate WAN Prompt</button>
+            <button id="savePromptBtn">Save Prompt Text (same folder as image)</button>
           </div>
         </div>
       </section>

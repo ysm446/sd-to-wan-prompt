@@ -83,6 +83,7 @@ function updateImagePreview(imagePath) {
 }
 
 function collectSettingsPayload() {
+  const selectedSections = Array.from(document.querySelectorAll('.section-check:checked')).map((el) => el.value);
   return {
     inference_settings: {
       temperature: Number(byId('temperatureInput').value || 0.7),
@@ -92,6 +93,7 @@ function collectSettingsPayload() {
       language: byId('languageSelect').value || 'English',
       style_preset: byId('styleSelect').value || null,
     },
+    output_sections: selectedSections,
     auto_unload: Boolean(byId('autoUnloadInput').checked),
   };
 }
@@ -107,6 +109,12 @@ function applySettings(settings) {
   if (typeof gen.language !== 'undefined') byId('languageSelect').value = gen.language;
   if (typeof gen.style_preset !== 'undefined') byId('styleSelect').value = gen.style_preset || '';
   if (typeof settings.auto_unload !== 'undefined') byId('autoUnloadInput').checked = Boolean(settings.auto_unload);
+  if (Array.isArray(settings.output_sections) && settings.output_sections.length > 0) {
+    const selected = new Set(settings.output_sections);
+    document.querySelectorAll('.section-check').forEach((el) => {
+      el.checked = selected.has(el.value);
+    });
+  }
 }
 
 async function refreshHealth() {
@@ -286,7 +294,7 @@ async function generate() {
     additional_instruction: byId('instructionInput').value || '',
     style_preset: byId('styleSelect').value || null,
     output_language: byId('languageSelect').value,
-    output_sections: ['scene', 'action', 'camera', 'style', 'prompt'],
+    output_sections: Array.from(document.querySelectorAll('.section-check:checked')).map((el) => el.value),
     temperature: Number(byId('temperatureInput').value || 0.7),
     max_tokens: Number(byId('maxTokensInput').value || 1024),
     auto_unload: Boolean(byId('autoUnloadInput').checked),
@@ -297,6 +305,9 @@ async function generate() {
   }
   if (Number.isNaN(payload.max_tokens) || payload.max_tokens < 64) {
     throw new Error('Max tokens must be 64 or higher.');
+  }
+  if (!payload.output_sections || payload.output_sections.length === 0) {
+    throw new Error('Please select at least one output section.');
   }
 
   generateBtn.disabled = true;
