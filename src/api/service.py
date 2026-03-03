@@ -233,6 +233,62 @@ class PromptService:
         save_path.write_text("\n".join(lines), encoding="utf-8")
         return {"saved_path": str(save_path)}
 
+    def save_session_json(self, prompt_text: str, additional_instruction: str) -> Dict[str, Any]:
+        if not self.current_image_path:
+            raise RuntimeError("No image selected. Parse an image first.")
+
+        image_path = Path(self.current_image_path)
+        save_path = image_path.with_suffix(".json")
+        payload = {
+            "image_filename": image_path.name,
+            "image_path": str(image_path),
+            "metadata": self.current_metadata or {},
+            "prompt": (prompt_text or "").strip(),
+            "additional_instruction": (additional_instruction or "").strip(),
+        }
+        save_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {"saved_path": str(save_path), "data": payload}
+
+    def load_session_json(self, json_path: str) -> Dict[str, Any]:
+        normalized = self._normalize_image_path(json_path)
+        path = Path(normalized)
+        if not path.exists():
+            raise FileNotFoundError(f"JSON not found: {normalized}")
+
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("Invalid JSON format: object expected")
+
+        metadata = data.get("metadata")
+        if not isinstance(metadata, dict):
+            metadata = {}
+
+        image_path = (data.get("image_path") or "").strip()
+        image_filename = (data.get("image_filename") or "").strip()
+        resolved_image_path = ""
+
+        if image_path:
+            candidate = Path(self._normalize_image_path(image_path))
+            if candidate.exists():
+                resolved_image_path = str(candidate)
+        elif image_filename:
+            candidate = path.parent / image_filename
+            if candidate.exists():
+                resolved_image_path = str(candidate)
+
+        with self.lock:
+            self.current_metadata = metadata
+            self.current_image_path = resolved_image_path or None
+
+        return {
+            "image_filename": image_filename or (Path(resolved_image_path).name if resolved_image_path else ""),
+            "image_path": resolved_image_path,
+            "metadata": metadata,
+            "prompt": (data.get("prompt") or "").strip(),
+            "additional_instruction": (data.get("additional_instruction") or "").strip(),
+            "json_path": str(path),
+        }
+
     def _model_state(self) -> Dict[str, Any]:
         loaded = self.current_vlm is not None
         context_length = self.current_vlm.get_context_length() if loaded else 0

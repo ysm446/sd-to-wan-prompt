@@ -19,6 +19,50 @@ function setStatus(message, detail = null) {
   statusOut.textContent = JSON.stringify(payload, null, 2);
 }
 
+function normalizeMultilineText(value) {
+  const text = String(value || '');
+  // Session JSON may contain escaped newlines (\\n). Render them as real newlines.
+  return text.replace(/\\n/g, '\n').trim();
+}
+
+function renderMetadataPretty(metadata) {
+  if (!metadata || typeof metadata !== 'object') {
+    metadataOut.textContent = '-';
+    return;
+  }
+
+  const lines = [];
+  const filename = metadata.filename || '';
+  const size = Array.isArray(metadata.size) ? `${metadata.size[0]} x ${metadata.size[1]}` : '';
+
+  if (filename) lines.push(`File: ${filename}`);
+  if (size) lines.push(`Size: ${size}`);
+  if (filename || size) lines.push('');
+
+  const prompt = normalizeMultilineText(metadata.prompt);
+  const negative = normalizeMultilineText(metadata.negative_prompt);
+  const settings = metadata.settings && typeof metadata.settings === 'object' ? metadata.settings : {};
+
+  lines.push('Prompt:');
+  lines.push(prompt || '-');
+  lines.push('');
+  lines.push('Negative Prompt:');
+  lines.push(negative || '-');
+  lines.push('');
+  lines.push('Settings:');
+
+  const settingKeys = Object.keys(settings);
+  if (settingKeys.length === 0) {
+    lines.push('-');
+  } else {
+    settingKeys.forEach((key) => {
+      lines.push(`${key}: ${settings[key]}`);
+    });
+  }
+
+  metadataOut.textContent = lines.join('\n');
+}
+
 async function normalizeDroppedPath(file, event) {
   if (file && typeof window.wanApi?.getPathForFile === 'function') {
     try {
@@ -59,6 +103,10 @@ async function normalizeDroppedPath(file, event) {
 
 function isImagePath(value) {
   return /\.(png|jpe?g|webp|bmp|gif)$/i.test(value || '');
+}
+
+function isJsonPath(value) {
+  return /\.json$/i.test(value || '');
 }
 
 function toFileUrl(winPath) {
@@ -190,8 +238,25 @@ async function parseImage() {
   updateImagePreview(imagePath);
   setStatus('Parsing image metadata...');
   const res = await window.wanApi.parseImage(imagePath);
-  metadataOut.textContent = JSON.stringify(res.metadata, null, 2);
+  renderMetadataPretty(res.metadata);
   setStatus('Image metadata parsed.');
+}
+
+function applyLoadedSession(session) {
+  if (!session) return;
+  if (session.image_path) {
+    byId('imagePathInput').value = session.image_path;
+    updateImagePreview(session.image_path);
+  }
+  if (session.metadata) {
+    renderMetadataPretty(session.metadata);
+  }
+  if (typeof session.prompt === 'string') {
+    outputOut.value = session.prompt;
+  }
+  if (typeof session.additional_instruction === 'string') {
+    byId('instructionInput').value = session.additional_instruction;
+  }
 }
 
 function bindDropZone() {
@@ -230,15 +295,27 @@ function bindDropZone() {
       setStatus('Failed to read dropped file path.', { dataTransferTypes: types });
       return;
     }
-    if (!(file?.type?.startsWith('image/') || isImagePath(droppedPath))) {
-      setStatus('Only image files are supported.');
+
+    if (isJsonPath(droppedPath)) {
+      setStatus('JSON dropped. Loading session...');
+      const session = await window.wanApi.loadSessionJson(droppedPath);
+      applyLoadedSession(session);
+      setStatus('Session JSON loaded.', {
+        json_path: session.json_path,
+        image_filename: session.image_filename,
+      });
       return;
     }
 
-    byId('imagePathInput').value = droppedPath;
-    updateImagePreview(droppedPath);
-    setStatus('Image dropped. Parsing metadata...');
-    await runSafe(parseImage);
+    if (file?.type?.startsWith('image/') || isImagePath(droppedPath)) {
+      byId('imagePathInput').value = droppedPath;
+      updateImagePreview(droppedPath);
+      setStatus('Image dropped. Parsing metadata...');
+      await runSafe(parseImage);
+      return;
+    }
+
+    setStatus('Unsupported file type. Drop an image or session JSON.');
   });
 }
 
@@ -376,13 +453,13 @@ async function savePromptText() {
   const outputText = outputOut.value.trim();
   const additionalInstruction = byId('instructionInput').value || '';
 
-  if (!outputText) {
-    throw new Error('No generated prompt text to save.');
+  if (!byId('imagePathInput').value.trim()) {
+    throw new Error('Load an image before saving session JSON.');
   }
 
-  setStatus('Saving prompt text next to source image...');
-  const res = await window.wanApi.savePromptToFile('', outputText, additionalInstruction);
-  setStatus('Prompt saved.', res);
+  setStatus('Saving session JSON next to source image...');
+  const res = await window.wanApi.saveSessionJson(outputText, additionalInstruction);
+  setStatus('Session JSON saved.', { saved_path: res.saved_path });
   await saveSettings();
 }
 

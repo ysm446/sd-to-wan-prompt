@@ -45,6 +45,15 @@ class SavePromptRequest(BaseModel):
     additional_instruction: str = ""
 
 
+class SaveSessionRequest(BaseModel):
+    prompt: str = ""
+    additional_instruction: str = ""
+
+
+class LoadSessionRequest(BaseModel):
+    json_path: str
+
+
 def create_app(config: Dict[str, Any]) -> FastAPI:
     service = PromptService(config)
     app = FastAPI(title="WAN Prompt API", version=config["app"]["version"])
@@ -167,6 +176,23 @@ def create_app(config: Dict[str, Any]) -> FastAPI:
                 output_text=req.output_text,
                 additional_instruction=req.additional_instruction,
             )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/session/save")
+    def save_session(req: SaveSessionRequest) -> Dict[str, Any]:
+        try:
+            return service.save_session_json(
+                prompt_text=req.prompt,
+                additional_instruction=req.additional_instruction,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/session/load")
+    def load_session(req: LoadSessionRequest) -> Dict[str, Any]:
+        try:
+            return service.load_session_json(req.json_path)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

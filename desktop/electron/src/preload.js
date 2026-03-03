@@ -58,4 +58,19 @@ contextBridge.exposeInMainWorld('wanApi', {
         additional_instruction: additionalInstruction || '',
       }),
     }),
+  saveSessionJson: (prompt, additionalInstruction) =>
+    request('/session/save', {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt: prompt || '',
+        additional_instruction: additionalInstruction || '',
+      }),
+    }),
+  loadSessionJson: (jsonPath) =>
+    request('/session/load', {
+      method: 'POST',
+      body: JSON.stringify({
+        json_path: jsonPath,
+      }),
+    }),
 });
