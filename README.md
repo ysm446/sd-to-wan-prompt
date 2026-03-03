@@ -1,64 +1,75 @@
 # WAN Prompt Generator
 
-Stable Diffusionで生成された画像とそのプロンプトから、Vision-Language Model（VLM）を使ってWAN 2.2用の動画生成プロンプトを作成するアプリケーション
+Stable Diffusionで生成された画像とそのプロンプトから、Vision-Language Model（VLM）を使ってWAN 2.2用の動画生成プロンプトを作成するアプリケーション。GradioによるWebUI、FastAPIによるREST API、Electronによるデスクトップアプリの3モードに対応。
 
 ## 主要機能
 
-- PNG画像からメタデータ（プロンプト情報）を自動抽出
+- PNG画像からメタデータ（プロンプト情報）を自動抽出（A1111 WebUI / ComfyUI形式対応）
 - SD以外の一般画像にも対応（VLMが画像を直接分析）
 - VLMが画像とSDプロンプトを分析し、WAN 2.2用動画プロンプトを生成
 - 出力言語選択（English / 日本語）
 - スタイルプリセット（なし / 穏やか / ダイナミック / シネマティック / アニメ風）
 - 出力項目の個別選択（シーン / アクション / カメラ / スタイル / WANプロンプト）
 - 追加指示によるカスタマイズ
+- セッション保存・読み込み（JSON形式）
+- 生成プロンプトのTXTファイル保存
 - 設定の自動保存（言語、スタイル、出力項目、推論設定、使用モデル）
 - Hugging Faceからのモデル自動ダウンロード
 - 複数モデルの切り替え機能
+- FastAPI REST APIモード（Electronデスクトップアプリ連携）
 
 ## 技術スタック
 
 - **Python 3.10+**
 - **Gradio 6.0+** - ユーザーインターフェース
+- **FastAPI / Uvicorn** - REST APIサーバー（APIモード）
 - **Transformers** - VLMモデル推論
 - **Pillow** - 画像処理
 - **PyTorch** - 深層学習フレームワーク
+- **Electron** - デスクトップアプリラッパー（オプション）
 
 ## 対応モデル
 
 - **Qwen2.5-VL系** (3B, 7B)
 - **Qwen3-VL系** (4B, 8B) - 最新世代
-- **Huihui-AI abliterated** (試験用)
+- **Huihui-AI abliterated** (試験用、フィルタ除去版)
 
 ## プロジェクト構成
 
 ```
 sd-to-wan-prompt/
-├── data/
-│   ├── sd_outputs/          # SD生成画像の保存先
-│   ├── database/            # メタデータDB
-│   └── downloads/           # ダウンロードした画像等
-├── models/                  # ローカルVLMモデル保存先
-├── src/
-│   ├── core/                # コアモジュール
-│   │   ├── image_parser.py
-│   │   ├── model_manager.py
-│   │   ├── vlm_interface.py
-│   │   └── vlm_interface_gguf.py  # GGUF形式対応
-│   ├── ui/                  # UIモジュール
-│   │   └── gradio_app.py
-│   └── utils/               # ユーティリティ
-│       └── config_loader.py
-├── config/                  # 設定ファイル
-│   ├── settings.yaml
-│   └── model_presets.yaml
-├── scripts/                 # スクリプト
-│   ├── setup.py
-│   ├── test_model.py
-│   ├── check_cuda.py
-│   └── check_gpu.py
+├── app.py                      # エントリーポイント（--mode gradio/api/help）
+├── start.bat                   # Windows起動スクリプト（Conda環境対応）
+├── convert_txt_to_json.bat     # TXT→JSONセッション変換バッチ
 ├── requirements.txt
-├── start.bat                # Windows起動スクリプト
-└── app.py                   # エントリーポイント
+├── config/
+│   ├── settings.yaml           # アプリケーション設定
+│   └── model_presets.yaml      # VLMモデルプリセット定義
+├── src/
+│   ├── core/
+│   │   ├── image_parser.py     # PNGメタデータ抽出
+│   │   ├── model_manager.py    # VLMダウンロード・管理
+│   │   └── vlm_interface.py    # VLM推論・WAN用プロンプト生成
+│   ├── ui/
+│   │   └── gradio_app.py       # Gradio UIメインモジュール
+│   ├── api/
+│   │   ├── server.py           # FastAPI REST APIサーバー
+│   │   └── service.py          # ビジネスロジックサービス
+│   └── utils/
+│       └── config_loader.py    # YAML設定読み込み
+├── scripts/
+│   ├── setup.py                # 初期セットアップ
+│   ├── test_model.py           # モデル検証テスト
+│   ├── check_cuda.py           # CUDA環境確認
+│   ├── check_gpu.py            # GPU状態確認
+│   └── convert_txt_to_json.py  # TXTをセッションJSONに変換
+├── data/
+│   ├── sd_outputs/             # SD生成画像の保存先
+│   ├── database/               # メタデータDB
+│   └── downloads/              # ダウンロードファイル
+├── models/                     # ローカルVLMモデル保存先
+└── desktop/
+    └── electron/               # Electronデスクトップアプリ
 ```
 
 ## セットアップ方法
@@ -73,11 +84,8 @@ cd sd-to-wan-prompt
 ### 2. Conda環境の作成（推奨）
 
 ```bash
-# Conda環境を作成
-conda create -n sd-to-wan-prompt python=3.10 -y
-
-# 環境をアクティベート
-conda activate sd-to-wan-prompt
+conda create -n wan-prompt python=3.10 -y
+conda activate wan-prompt
 ```
 
 ### 3. 依存関係のインストール
@@ -97,11 +105,12 @@ python scripts/setup.py
 ### アプリケーションの起動
 
 ```bash
-# Conda環境をアクティベート
-conda activate sd-to-wan-prompt
-
-# アプリケーションを起動
+# Gradio WebUI（デフォルト）
+conda activate wan-prompt
 python app.py
+
+# Windowsの場合はstart.batも使用可能
+start.bat gradio
 ```
 
 ブラウザで `http://localhost:7860` を開く
@@ -122,6 +131,7 @@ python app.py
    - 追加指示がある場合は入力欄に記載
    - 「WANプロンプト生成」ボタンをクリック
    - 生成されたプロンプトをコピーしてWAN 2.2で使用
+   - セッション保存ボタンでJSON形式に保存可能
    - ※設定は自動保存され、次回起動時に復元される
 
 3. **設定タブ**
@@ -147,7 +157,7 @@ python app.py
 | **スタイル** | 視覚的なスタイルと雰囲気 |
 | **WANプロンプト** | 上記を組み合わせた最終プロンプト |
 
-※不要な項目のチェックを外すことで、出力を短くできます
+不要な項目のチェックを外すことで、出力を短くできます。
 
 ## モデルのダウンロード
 
@@ -167,29 +177,58 @@ python app.py
 - **qwen3-vl-4b**: バランス型（VRAM ~6GB）- 推奨
 - **qwen3-vl-8b**: 高性能（VRAM ~10-12GB）
 
-**試験用**
-- **huihui-qwen3-vl-4b-abliterated**: フィルタ除去版 4B
-- **huihui-qwen3-vl-8b-abliterated**: フィルタ除去版 8B
+**試験用（フィルタ除去版）**
+- **huihui-qwen3-vl-4b-abliterated**: VRAM ~6GB
+- **huihui-qwen3-vl-8b-abliterated**: VRAM ~10-12GB
+
+## セッション保存・読み込み
+
+生成したプロンプトをJSONセッションファイルとして保存することで、後から結果を復元できます。
+
+```json
+{
+  "image_path": "/path/to/image.png",
+  "prompt": "...",
+  "additional_instruction": "...",
+  "wan_prompt": "..."
+}
+```
+
+### TXTファイルからJSONへの変換
+
+既存のTXTプロンプトファイルをセッションJSON形式に一括変換できます。
+
+```bash
+# Pythonスクリプト（直接実行）
+python scripts/convert_txt_to_json.py [ターゲットディレクトリ] --recursive --overwrite
+
+# Windowsバッチスクリプト
+convert_txt_to_json.bat [ターゲットディレクトリ] [--overwrite]
+```
+
+TXTファイルの期待フォーマット:
+```
+=== Original Prompt ===
+[元のSDプロンプト]
+=== Additional Instruction ===
+[追加指示]
+=== Generated WAN Prompt ===
+[生成されたWANプロンプト]
+```
 
 ## 設定ファイル
 
 ### config/settings.yaml
-
-アプリケーションの基本設定を管理
 
 ```yaml
 app:
   name: "WAN Prompt Generator"
   version: "0.1.0"
 
-paths:
-  image_folder: "./data/sd_outputs"
-  models_dir: "./models"
-
 model:
   default: "qwen3-vl-4b"
   device: "cuda"
-  dtype: "float16"
+  dtype: "float16"    # float16, bfloat16, float32
 
 inference:
   temperature: 0.7
@@ -198,15 +237,6 @@ inference:
 
 wan_prompt:
   default_style: "cinematic"
-  style_presets:
-    calm:
-      description: "穏やかな動き"
-    dynamic:
-      description: "ダイナミック"
-    cinematic:
-      description: "シネマティック"
-    anime:
-      description: "アニメ風"
 
 ui:
   theme: "soft"
@@ -216,7 +246,39 @@ ui:
 
 ### config/model_presets.yaml
 
-モデルプリセットの定義
+モデルプリセットの定義（Hugging FaceリポジトリIDとローカル保存名）。新しいモデルを追加する際はこのファイルを編集してください。
+
+## Electronデスクトップモード
+
+`desktop/electron/` 以下にElectronデスクトップアプリが含まれています。
+
+### バックエンドの起動
+
+```bash
+python app.py --mode api --host 127.0.0.1 --port 7861
+# または
+start.bat api
+```
+
+### Electronアプリの起動
+
+```bash
+cd desktop/electron
+npm install
+npm start
+# または
+start.bat electron
+```
+
+### 環境変数
+
+| 変数名 | デフォルト | 説明 |
+|--------|-----------|------|
+| `PYTHON_EXECUTABLE` | （システムPython） | Pythonインタープリタのパス |
+| `WAN_API_HOST` | `127.0.0.1` | バックエンドホスト |
+| `WAN_API_PORT` | `7861` | バックエンドポート |
+
+> **Note**: TauriをElectronの代わりに使用したい場合は、同じバックエンド（`app.py --mode api`）を再利用し、フロントエンドシェルのみ置き換えてください。
 
 ## トラブルシューティング
 
@@ -237,6 +299,13 @@ ui:
 - インターネット接続を確認してください
 - Hugging Faceへのアクセスが制限されていないか確認してください
 
+### CUDA / GPU環境の確認
+
+```bash
+python scripts/check_cuda.py   # CUDA環境確認
+python scripts/check_gpu.py    # GPU状態確認
+```
+
 ## システム要件
 
 ### 最小要件
@@ -247,7 +316,6 @@ ui:
 
 ### 推奨要件
 
-- Python 3.10以上
 - GPU: NVIDIA GPU（VRAM 12GB以上）
 - RAM: 32GB以上
 - ストレージ: 50GB以上
@@ -255,44 +323,3 @@ ui:
 ## ライセンス
 
 MIT License
-
-## 貢献
-
-バグ報告や機能提案は、GitHubのIssuesでお願いします。
-
-## サポート
-
-問題が発生した場合は、以下を確認してください：
-
-1. 依存関係が正しくインストールされているか
-2. Conda環境が正しくアクティベートされているか
-3. モデルファイルが正しくダウンロードされているか
-
-詳細なログを確認する場合は、ターミナルの出力を確認してください。
-
-## Electron mode (new)
-
-A desktop wrapper now exists under `desktop/electron`, backed by `FastAPI`.
-
-### Start backend only
-
-```bash
-python app.py --mode api --host 127.0.0.1 --port 7861
-```
-
-### Start Electron app
-
-```bash
-cd desktop/electron
-npm install
-npm start
-```
-
-Environment variables:
-- `PYTHON_EXECUTABLE`: path to Python interpreter to run `app.py`
-- `WAN_API_HOST`: backend host (default `127.0.0.1`)
-- `WAN_API_PORT`: backend port (default `7861`)
-
-## Tauri note
-
-If you prefer Tauri instead of Electron, reuse the same backend (`app.py --mode api`) and replace only the desktop frontend shell.
