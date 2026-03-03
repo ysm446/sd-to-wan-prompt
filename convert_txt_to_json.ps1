@@ -66,6 +66,12 @@ foreach ($txt in $txtFiles) {
     $original = Get-SectionText -Text $text -StartMarker "=== Original Prompt ===" -EndMarkers @("=== Additional Instruction ===", "=== Generated WAN Prompt ===")
     $additional = Get-SectionText -Text $text -StartMarker "=== Additional Instruction ===" -EndMarkers @("=== Generated WAN Prompt ===")
     $generated = Get-SectionText -Text $text -StartMarker "=== Generated WAN Prompt ===" -EndMarkers @()
+    if ($null -eq $additional) { $additional = "" }
+    if ($null -eq $original) { $original = "" }
+    if ($null -eq $generated) { $generated = "" }
+    $additional = [string]$additional
+    $original = [string]$original
+    $generated = [string]$generated
 
     $imagePath = [System.IO.Path]::ChangeExtension($txt.FullName, ".png")
     $imageFilename = [System.IO.Path]::GetFileName($imagePath)

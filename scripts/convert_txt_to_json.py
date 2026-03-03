@@ -85,9 +85,9 @@ def build_session_payload(txt_path: Path) -> Dict:
         "image_filename": image_path.name,
         "image_path": str(image_path),
         "metadata": metadata,
-        "prompt": sections["generated_prompt"],
-        "additional_instruction": sections["additional_instruction"],
-        "original_prompt": sections["original_prompt"],
+        "prompt": str(sections.get("generated_prompt") or ""),
+        "additional_instruction": str(sections.get("additional_instruction") or ""),
+        "original_prompt": str(sections.get("original_prompt") or ""),
     }
 
 
