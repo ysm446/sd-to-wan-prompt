@@ -30,7 +30,7 @@ function startBackend() {
 
   backendProcess = spawn(
     python,
-    ['app.py', '--mode', 'api', '--host', API_HOST, '--port', API_PORT],
+    ['app.py', '--host', API_HOST, '--port', API_PORT],
     {
       cwd: projectRoot,
       env: {
