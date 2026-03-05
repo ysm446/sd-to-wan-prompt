@@ -485,6 +485,14 @@ function bindEvents() {
   byId('savePromptBtn').addEventListener('click', () => runSafe(savePromptText));
   byId('saveSettingsBtn').addEventListener('click', () => runSafe(saveSettings));
   byId('generateBtn').addEventListener('click', () => runSafe(generate));
+  byId('copyPromptBtn').addEventListener('click', async () => {
+    const text = outputOut.value.trim();
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    const btn = byId('copyPromptBtn');
+    btn.classList.add('copied');
+    setTimeout(() => btn.classList.remove('copied'), 1500);
+  });
   bindDropZone();
 }
 
