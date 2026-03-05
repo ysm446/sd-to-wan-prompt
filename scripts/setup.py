@@ -31,7 +31,6 @@ def check_dependencies():
     """依存関係がインストールされているか確認"""
     print("\n依存関係を確認中...")
     required_packages = [
-        "gradio",
         "transformers",
         "torch",
         "PIL",

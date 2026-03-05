@@ -1,6 +1,6 @@
 # WAN Prompt Generator
 
-Stable Diffusionで生成された画像とそのプロンプトから、Vision-Language Model（VLM）を使ってWAN 2.2用の動画生成プロンプトを作成するアプリケーション。GradioによるWebUI、FastAPIによるREST API、Electronによるデスクトップアプリの3モードに対応。
+Stable Diffusionで生成された画像とそのプロンプトから、Vision-Language Model（VLM）を使ってWAN 2.2用の動画生成プロンプトを作成するアプリケーション。FastAPIによるREST APIとElectronによるデスクトップアプリで構成。
 
 ## 主要機能
 
@@ -16,17 +16,15 @@ Stable Diffusionで生成された画像とそのプロンプトから、Vision-
 - 設定の自動保存（言語、スタイル、出力項目、推論設定、使用モデル）
 - Hugging Faceからのモデル自動ダウンロード
 - 複数モデルの切り替え機能
-- FastAPI REST APIモード（Electronデスクトップアプリ連携）
 
 ## 技術スタック
 
 - **Python 3.10+**
-- **Gradio 6.0+** - ユーザーインターフェース
-- **FastAPI / Uvicorn** - REST APIサーバー（APIモード）
+- **FastAPI / Uvicorn** - REST APIサーバー
 - **Transformers** - VLMモデル推論
 - **Pillow** - 画像処理
 - **PyTorch** - 深層学習フレームワーク
-- **Electron** - デスクトップアプリラッパー（オプション）
+- **Electron** - デスクトップアプリラッパー
 
 ## 対応モデル
 
@@ -38,7 +36,7 @@ Stable Diffusionで生成された画像とそのプロンプトから、Vision-
 
 ```
 sd-to-wan-prompt/
-├── app.py                      # エントリーポイント（--mode gradio/api/help）
+├── app.py                      # エントリーポイント（FastAPI APIサーバー起動）
 ├── start.bat                   # Windows起動スクリプト（Conda環境対応）
 ├── convert_txt_to_json.bat     # TXT→JSONセッション変換バッチ
 ├── requirements.txt
@@ -50,8 +48,6 @@ sd-to-wan-prompt/
 │   │   ├── image_parser.py     # PNGメタデータ抽出
 │   │   ├── model_manager.py    # VLMダウンロード・管理
 │   │   └── vlm_interface.py    # VLM推論・WAN用プロンプト生成
-│   ├── ui/
-│   │   └── gradio_app.py       # Gradio UIメインモジュール
 │   ├── api/
 │   │   ├── server.py           # FastAPI REST APIサーバー
 │   │   └── service.py          # ビジネスロジックサービス
@@ -84,8 +80,8 @@ cd sd-to-wan-prompt
 ### 2. Conda環境の作成（推奨）
 
 ```bash
-conda create -n wan-prompt python=3.10 -y
-conda activate wan-prompt
+conda create -n main python=3.10 -y
+conda activate main
 ```
 
 ### 3. 依存関係のインストール
@@ -105,37 +101,41 @@ python scripts/setup.py
 ### アプリケーションの起動
 
 ```bash
-# Gradio WebUI（デフォルト）
-conda activate wan-prompt
-python app.py
+# Electronデスクトップアプリ（デフォルト）
+start.bat electron
+# または
+start.bat
 
-# Windowsの場合はstart.batも使用可能
-start.bat gradio
+# FastAPI APIサーバーのみ（バックエンド）
+start.bat api
+# または
+conda activate main
+python app.py --host 127.0.0.1 --port 7861
 ```
 
-ブラウザで `http://localhost:7860` を開く
+### Electronアプリの起動
 
-### 基本的な使い方
+```bash
+cd desktop/electron
+npm install
+npm start
+```
 
-1. **モデル管理タブ**
-   - プリセットから使用したいモデルを選択
-   - ダウンロードボタンをクリック
-   - ダウンロード完了後、モデルをロード
+## API エンドポイント
 
-2. **プロンプト生成タブ**
-   - SD画像をアップロード（PNGメタデータが自動抽出される）
-   - ※SD以外の一般画像も使用可能
-   - 出力言語を選択（English / 日本語）
-   - スタイルプリセットを選択（任意）
-   - 出力項目を選択（不要な項目のチェックを外すと出力が短くなる）
-   - 追加指示がある場合は入力欄に記載
-   - 「WANプロンプト生成」ボタンをクリック
-   - 生成されたプロンプトをコピーしてWAN 2.2で使用
-   - セッション保存ボタンでJSON形式に保存可能
-   - ※設定は自動保存され、次回起動時に復元される
-
-3. **設定タブ**
-   - Temperature、Max Tokens等のパラメータを調整
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | `/health` | ヘルスチェック |
+| GET | `/models` | ローカルモデル一覧 |
+| POST | `/models/load` | モデルロード |
+| POST | `/models/download` | モデルダウンロード |
+| POST | `/models/unload` | モデルアンロード |
+| POST | `/image/parse` | 画像メタデータ抽出 |
+| POST | `/generate` | プロンプト生成（同期） |
+| POST | `/generate/stream` | プロンプト生成（NDJSONストリーミング） |
+| GET/POST | `/settings` | 設定取得・更新 |
+| POST | `/session/save` | セッションJSON保存 |
+| POST | `/session/load` | セッションJSON読み込み |
 
 ## スタイルプリセット
 
@@ -157,17 +157,9 @@ start.bat gradio
 | **スタイル** | 視覚的なスタイルと雰囲気 |
 | **WANプロンプト** | 上記を組み合わせた最終プロンプト |
 
-不要な項目のチェックを外すことで、出力を短くできます。
-
 ## モデルのダウンロード
 
-### UI上でダウンロード
-
-1. 「モデル管理」タブを開く
-2. プリセットを選択（例: qwen3-vl-4b）
-3. 「ダウンロード開始」ボタンをクリック
-
-### プリセット一覧
+Electronアプリの「モデル管理」画面からダウンロード可能です。
 
 **Qwen2.5-VL シリーズ**
 - **qwen2.5-vl-3b**: 軽量版（VRAM ~5GB）- 低メモリ環境向け
@@ -237,48 +229,19 @@ inference:
 
 wan_prompt:
   default_style: "cinematic"
-
-ui:
-  theme: "soft"
-  share: false
-  server_port: 7860
 ```
 
 ### config/model_presets.yaml
 
 モデルプリセットの定義（Hugging FaceリポジトリIDとローカル保存名）。新しいモデルを追加する際はこのファイルを編集してください。
 
-## Electronデスクトップモード
-
-`desktop/electron/` 以下にElectronデスクトップアプリが含まれています。
-
-### バックエンドの起動
-
-```bash
-python app.py --mode api --host 127.0.0.1 --port 7861
-# または
-start.bat api
-```
-
-### Electronアプリの起動
-
-```bash
-cd desktop/electron
-npm install
-npm start
-# または
-start.bat electron
-```
-
-### 環境変数
+## 環境変数（Electron）
 
 | 変数名 | デフォルト | 説明 |
 |--------|-----------|------|
 | `PYTHON_EXECUTABLE` | （システムPython） | Pythonインタープリタのパス |
 | `WAN_API_HOST` | `127.0.0.1` | バックエンドホスト |
 | `WAN_API_PORT` | `7861` | バックエンドポート |
-
-> **Note**: TauriをElectronの代わりに使用したい場合は、同じバックエンド（`app.py --mode api`）を再利用し、フロントエンドシェルのみ置き換えてください。
 
 ## トラブルシューティング
 

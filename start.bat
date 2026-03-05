@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 
@@ -26,7 +26,7 @@ if exist "%USERPROFILE%\miniconda3\Scripts\activate.bat" (
     echo.
     echo Use a Conda prompt and run:
     echo   conda activate main
-    echo   python app.py --mode gradio
+    echo   python app.py
     echo.
     pause
     exit /b 1
@@ -52,7 +52,6 @@ if %ERRORLEVEL% NEQ 0 (
 echo Environment activated successfully
 echo.
 
-if /I "%MODE%"=="gradio" goto RUN_GRADIO
 if /I "%MODE%"=="api" goto RUN_API
 if /I "%MODE%"=="electron" goto RUN_ELECTRON
 if /I "%MODE%"=="help" goto SHOW_HELP
@@ -60,18 +59,11 @@ if /I "%MODE%"=="help" goto SHOW_HELP
 echo [ERROR] Unknown mode: %MODE%
 goto SHOW_HELP
 
-:RUN_GRADIO
-echo Starting Gradio UI...
-echo Press Ctrl+C to stop
-echo.
-python app.py --mode gradio
-goto END
-
 :RUN_API
 echo Starting API server on %API_HOST%:%API_PORT% ...
 echo Press Ctrl+C to stop
 echo.
-python app.py --mode api --host %API_HOST% --port %API_PORT%
+python app.py --host %API_HOST% --port %API_PORT%
 goto END
 
 :RUN_ELECTRON
@@ -108,9 +100,8 @@ echo Usage:
 echo   start.bat [mode]
 echo.
 echo Modes:
-echo   gradio   Start legacy Gradio UI (default)
 echo   api      Start FastAPI backend only
-echo   electron Start Electron desktop app
+echo   electron Start Electron desktop app (default)
 echo   help     Show this help
 
 :END

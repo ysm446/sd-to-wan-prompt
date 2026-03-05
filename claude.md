@@ -1,11 +1,10 @@
 # WAN Prompt Generator
 
-Stable Diffusionで生成された画像とそのプロンプトから、Vision-Language Model（VLM）を使ってWAN 2.2用の動画生成プロンプトを作成するWebアプリケーション。GradioによるWebUI、FastAPIによるREST API、Electronによるデスクトップアプリの3モードに対応。
+Stable Diffusionで生成された画像とそのプロンプトから、Vision-Language Model（VLM）を使ってWAN 2.2用の動画生成プロンプトを作成するWebアプリケーション。FastAPIによるREST API、Electronによるデスクトップアプリの2モードに対応。
 
 ## 技術スタック
 
 - **Python 3.10+**
-- **Gradio 6.0+** - WebUIフレームワーク
 - **FastAPI / Uvicorn** - REST APIサーバー（Electronデスクトップ連携用）
 - **PyTorch 2.0+** - 深層学習フレームワーク
 - **Transformers 4.40+** - VLMモデル推論
@@ -16,7 +15,7 @@ Stable Diffusionで生成された画像とそのプロンプトから、Vision-
 
 ```
 sd-to-wan-prompt/
-├── app.py                      # エントリーポイント（--mode gradio/api/help）
+├── app.py                      # エントリーポイント（FastAPI APIサーバー起動）
 ├── start.bat                   # Windows起動スクリプト（Conda環境対応）
 ├── convert_txt_to_json.bat     # TXT→JSONセッション変換バッチ
 ├── requirements.txt
@@ -28,8 +27,6 @@ sd-to-wan-prompt/
 │   │   ├── image_parser.py     # PNGメタデータ抽出（A1111/ComfyUI形式対応）
 │   │   ├── model_manager.py    # VLMダウンロード・管理
 │   │   └── vlm_interface.py    # Transformers形式VLM推論（generate_wan_prompt_stream含む）
-│   ├── ui/
-│   │   └── gradio_app.py       # Gradio UIメインモジュール（3タブ構成）
 │   ├── api/
 │   │   ├── server.py           # FastAPI REST APIサーバー
 │   │   └── service.py          # ビジネスロジックサービス（PromptService）
@@ -54,11 +51,10 @@ sd-to-wan-prompt/
 
 | モジュール | 役割 |
 |-----------|------|
-| `app.py` | ConfigLoaderで設定を読み込み、Gradio UIまたはFastAPI APIサーバーを起動 |
+| `app.py` | ConfigLoaderで設定を読み込み、FastAPI APIサーバーを起動 |
 | `image_parser.py` | PNG画像からプロンプト、ネガティブプロンプト、設定パラメータを抽出（A1111/ComfyUI対応） |
 | `model_manager.py` | Hugging Faceからのモデルダウンロード、ローカルモデル管理・検証 |
 | `vlm_interface.py` | Transformers形式VLMのモデルロード・推論、WAN用プロンプト生成（ストリーミング対応） |
-| `gradio_app.py` | 3タブ構成のWebUI（プロンプト生成、モデル管理、設定）、設定キャッシュ管理 |
 | `server.py` | FastAPI REST APIサーバー、CORS対応、NDJSONストリーミングエンドポイント |
 | `service.py` | PromptServiceクラス、スレッドセーフな状態管理、セッション保存・読み込み |
 | `config_loader.py` | YAML設定読み込み・保存 |
@@ -84,22 +80,15 @@ sd-to-wan-prompt/
 ## 起動方法
 
 ```bash
-# Gradio WebUI（デフォルト）
-python app.py
-python app.py --mode gradio
-
 # FastAPI APIサーバー（Electronデスクトップアプリ用）
-python app.py --mode api --host 127.0.0.1 --port 7861
+python app.py --host 127.0.0.1 --port 7861
 
 # Windowsバッチスクリプト（Conda環境対応）
-start.bat gradio
 start.bat api
 start.bat electron
 ```
 
-ブラウザで `http://localhost:7860` にアクセス（Gradioモード）
-
-## API エンドポイント（APIモード）
+## API エンドポイント
 
 | メソッド | パス | 説明 |
 |---------|------|------|
@@ -117,7 +106,7 @@ start.bat electron
 
 ## 設定ファイル
 
-- `config/settings.yaml`: モデル設定、推論パラメータ、UIテーマ、WANプロンプト設定など
+- `config/settings.yaml`: モデル設定、推論パラメータ、WANプロンプト設定など
 - `config/model_presets.yaml`: VLMモデルのHugging FaceリポジトリIDとローカル保存名
 
 ## コーディング規約
