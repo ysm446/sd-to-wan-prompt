@@ -28,7 +28,6 @@ Stable Diffusionで生成された画像とそのプロンプトから、Vision-
 
 ## 対応モデル
 
-- **Qwen2.5-VL系** (3B, 7B)
 - **Qwen3-VL系** (4B, 8B) - 最新世代
 - **Huihui-AI abliterated** (試験用、フィルタ除去版)
 
@@ -160,10 +159,6 @@ npm start
 ## モデルのダウンロード
 
 Electronアプリの「モデル管理」画面からダウンロード可能です。
-
-**Qwen2.5-VL シリーズ**
-- **qwen2.5-vl-3b**: 軽量版（VRAM ~5GB）- 低メモリ環境向け
-- **qwen2.5-vl-7b**: 高品質（VRAM ~8-10GB）
 
 **Qwen3-VL シリーズ（最新世代）**
 - **qwen3-vl-4b**: バランス型（VRAM ~6GB）- 推奨
